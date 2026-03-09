@@ -5,7 +5,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bellona.db.session import get_db
-from bellona.schemas.ontology import EntityTypeCreate, EntityTypePatch, EntityTypeList, EntityTypeRead
+from bellona.schemas.ontology import (
+    EntityTypeCreate,
+    EntityTypePatch,
+    EntityTypeList,
+    EntityTypeRead,
+)
 from bellona.services.entity_type import (
     create_entity_type,
     get_entity_type,
@@ -38,7 +43,9 @@ async def list_all(db: AsyncSession = Depends(get_db)):
 async def get_one(entity_type_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     entity_type = await get_entity_type(db, entity_type_id)
     if entity_type is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity type not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Entity type not found"
+        )
     return entity_type
 
 
@@ -50,7 +57,9 @@ async def patch(
 ):
     entity_type = await get_entity_type(db, entity_type_id)
     if entity_type is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity type not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Entity type not found"
+        )
     entity_type = await patch_entity_type(db, entity_type, data)
     await db.commit()
     return entity_type

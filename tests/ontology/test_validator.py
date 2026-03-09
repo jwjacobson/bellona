@@ -1,7 +1,13 @@
 from bellona.ontology.validator import FieldError, validate_record
-from bellona.schemas.ontology import PropertyDefinitionCreate
+from bellona.schemas.ontology import DataType, PropertyDefinitionCreate
 
-def make_prop(name: str, data_type: str, required: bool = False, constraints: dict | None = None):
+
+def make_prop(
+    name: str,
+    data_type: DataType,
+    required: bool = False,
+    constraints: dict | None = None,
+):
     return PropertyDefinitionCreate(
         name=name, data_type=data_type, required=required, constraints=constraints
     )
@@ -79,7 +85,11 @@ def test_validate_constraint_pattern():
 
 
 def test_validate_enum_constraint():
-    props = [make_prop("status", "enum", constraints={"values": ["active", "inactive", "pending"]})]
+    props = [
+        make_prop(
+            "status", "enum", constraints={"values": ["active", "inactive", "pending"]}
+        )
+    ]
     result = validate_record({"status": "active"}, props)
     assert result.valid is True
 

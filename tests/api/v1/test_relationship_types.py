@@ -47,6 +47,7 @@ async def test_list_relationship_types(client: AsyncClient, two_entity_types):
 
 async def test_create_relationship_type_invalid_entity(client: AsyncClient):
     import uuid
+
     response = await client.post(
         "/api/v1/relationship-types",
         json={

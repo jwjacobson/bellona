@@ -9,7 +9,9 @@ from bellona.models.ontology import EntityType, PropertyDefinition
 from bellona.schemas.ontology import EntityTypeCreate, EntityTypePatch
 
 
-async def _load_entity_type(db: AsyncSession, entity_type_id: uuid.UUID) -> EntityType | None:
+async def _load_entity_type(
+    db: AsyncSession, entity_type_id: uuid.UUID
+) -> EntityType | None:
     result = await db.execute(
         select(EntityType)
         .where(EntityType.id == entity_type_id)
@@ -46,7 +48,9 @@ async def create_entity_type(db: AsyncSession, data: EntityTypeCreate) -> Entity
     return loaded
 
 
-async def get_entity_type(db: AsyncSession, entity_type_id: uuid.UUID) -> EntityType | None:
+async def get_entity_type(
+    db: AsyncSession, entity_type_id: uuid.UUID
+) -> EntityType | None:
     return await _load_entity_type(db, entity_type_id)
 
 

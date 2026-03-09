@@ -86,7 +86,9 @@ def validate_record(
         value = record.get(prop.name)
 
         if value is None and prop.required:
-            errors.append(FieldError(field=prop.name, message=f"'{prop.name}' is required"))
+            errors.append(
+                FieldError(field=prop.name, message=f"'{prop.name}' is required")
+            )
             continue
 
         coerced_value, coerce_error = _coerce(value, prop.data_type)
@@ -95,7 +97,9 @@ def validate_record(
             continue
 
         if coerced_value is not None and prop.constraints:
-            constraint_error = _check_constraints(coerced_value, prop.constraints, prop.data_type)
+            constraint_error = _check_constraints(
+                coerced_value, prop.constraints, prop.data_type
+            )
             if constraint_error:
                 errors.append(FieldError(field=prop.name, message=constraint_error))
                 continue

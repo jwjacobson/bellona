@@ -71,6 +71,7 @@ async def test_get_entity_type(client: AsyncClient):
 
 async def test_get_entity_type_not_found(client: AsyncClient):
     import uuid
+
     response = await client.get(f"/api/v1/entity-types/{uuid.uuid4()}")
     assert response.status_code == 404
 
@@ -83,11 +84,7 @@ async def test_patch_entity_type_add_property(client: AsyncClient):
 
     response = await client.patch(
         f"/api/v1/entity-types/{entity_id}",
-        json={
-            "add_properties": [
-                {"name": "founded_year", "data_type": "integer"}
-            ]
-        },
+        json={"add_properties": [{"name": "founded_year", "data_type": "integer"}]},
     )
     assert response.status_code == 200
     data = response.json()

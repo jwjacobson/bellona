@@ -4,12 +4,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bellona.db.session import get_db
 from bellona.schemas.ontology import RelationshipTypeCreate, RelationshipTypeRead
-from bellona.services.relationship_type import create_relationship_type, list_relationship_types
+from bellona.services.relationship_type import (
+    create_relationship_type,
+    list_relationship_types,
+)
 
 router = APIRouter(prefix="/relationship-types", tags=["relationship-types"])
 
 
-@router.post("", response_model=RelationshipTypeRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=RelationshipTypeRead, status_code=status.HTTP_201_CREATED
+)
 async def create(data: RelationshipTypeCreate, db: AsyncSession = Depends(get_db)):
     try:
         rel_type = await create_relationship_type(db, data)

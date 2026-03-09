@@ -4,11 +4,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-DataType = Literal["string", "integer", "float", "boolean", "date", "datetime", "enum", "json"]
+DataType = Literal[
+    "string", "integer", "float", "boolean", "date", "datetime", "enum", "json"
+]
 Cardinality = Literal["one-to-one", "one-to-many", "many-to-many"]
 
 
 # ── Property Definitions ─────────────────────────────────────────────────────
+
 
 class PropertyDefinitionCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
@@ -32,6 +35,7 @@ class PropertyDefinitionRead(BaseModel):
 
 
 # ── Entity Types ─────────────────────────────────────────────────────────────
+
 
 class EntityTypeCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
@@ -68,6 +72,7 @@ class EntityTypeList(BaseModel):
 
 
 # ── Relationship Types ───────────────────────────────────────────────────────
+
 
 class RelationshipTypeCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
