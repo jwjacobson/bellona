@@ -5,6 +5,26 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: bellona
+          POSTGRES_PASSWORD: bellona
+          POSTGRES_DB: bellona_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: ${{ vars.DATABASE_URL }}
+      DATABASE_URL_SYNC: ${{ vars.DATABASE_URL_SYNC }}
+
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
