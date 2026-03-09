@@ -3,13 +3,13 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from bellona.core.config import Settings
+from bellona.core.config import get_settings
 from bellona.db.session import get_db
 from bellona.main import app
 from bellona.models.base import Base
 
 
-test_settings = Settings(_env_file=".env.test")
+test_settings = get_settings()
 test_engine = create_async_engine(test_settings.database_url, echo=False)
 TestSessionLocal = async_sessionmaker(test_engine, expire_on_commit=False)
 
