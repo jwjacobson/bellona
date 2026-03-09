@@ -19,6 +19,7 @@ Follows src/ layout. Installable package lives in `src/bellona/`. Tests mirror t
 - **TDD always.** Write tests before implementation. No exceptions without explicit instruction.
 - **Small steps.** Implement one thing at a time, confirm it works, move on.
 - **No commits.** Leave all git operations to the developer.
+- **Do not use sudo.** If a task requires elevated privileges, output the command and ask the developer to run it manually.
 
 ## Code Style
 - Type annotations on all functions
