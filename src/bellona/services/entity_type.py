@@ -1,5 +1,6 @@
 import uuid
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +8,8 @@ from sqlalchemy.orm import selectinload
 
 from bellona.models.ontology import EntityType, PropertyDefinition
 from bellona.schemas.ontology import EntityTypeCreate, EntityTypePatch
+
+logger = structlog.get_logger()
 
 
 async def _load_entity_type(
@@ -45,6 +48,12 @@ async def create_entity_type(db: AsyncSession, data: EntityTypeCreate) -> Entity
     await db.flush()
     loaded = await _load_entity_type(db, entity_type.id)
     assert loaded is not None
+    logger.info(
+        "entity type created",
+        entity_type_id=str(loaded.id),
+        name=loaded.name,
+        property_count=len(loaded.property_definitions),
+    )
     return loaded
 
 
@@ -82,4 +91,11 @@ async def patch_entity_type(
     await db.flush()
     loaded = await _load_entity_type(db, entity_type.id)
     assert loaded is not None
+    logger.info(
+        "entity type patched",
+        entity_type_id=str(loaded.id),
+        name=loaded.name,
+        schema_version=loaded.schema_version,
+        properties_added=len(data.add_properties),
+    )
     return loaded

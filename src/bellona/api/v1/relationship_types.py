@@ -1,3 +1,4 @@
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,7 @@ from bellona.services.relationship_type import (
     list_relationship_types,
 )
 
+logger = structlog.get_logger()
 router = APIRouter(prefix="/relationship-types", tags=["relationship-types"])
 
 
@@ -21,8 +23,10 @@ async def create(data: RelationshipTypeCreate, db: AsyncSession = Depends(get_db
         await db.commit()
         return rel_type
     except ValueError as exc:
+        logger.warning("relationship type creation failed: entity type not found", name=data.name)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except IntegrityError:
+        logger.warning("relationship type already exists", name=data.name)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Relationship type '{data.name}' already exists",

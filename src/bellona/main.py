@@ -1,8 +1,25 @@
+from contextlib import asynccontextmanager
+
+import structlog
 from fastapi import FastAPI
 
 from bellona.api.v1 import router as v1_router
+from bellona.core.config import get_settings
+from bellona.core.logging import setup_logging
 
-app = FastAPI(title="Bellona", version="0.1.0")
+settings = get_settings()
+setup_logging(level="DEBUG" if settings.debug else "INFO")
+
+logger = structlog.get_logger()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("bellona starting up", debug=settings.debug)
+    yield
+
+
+app = FastAPI(title="Bellona", version="0.1.0", lifespan=lifespan)
 app.include_router(v1_router)
 
 

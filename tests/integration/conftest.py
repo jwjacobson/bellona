@@ -26,10 +26,6 @@ async def setup_database():
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def db_session(setup_database):
-    """
-    Uses a nested transaction (savepoint) so commits inside request handlers
-    only release a savepoint; the outer transaction is rolled back after each test.
-    """
     async with test_engine.connect() as conn:
         await conn.begin()
         session = AsyncSession(
