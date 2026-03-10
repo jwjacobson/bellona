@@ -1,3 +1,4 @@
+import structlog
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -5,11 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from bellona.models.ontology import EntityType, RelationshipType
 from bellona.schemas.ontology import RelationshipTypeCreate
 
+logger = structlog.get_logger()
+
 
 async def create_relationship_type(
     db: AsyncSession, data: RelationshipTypeCreate
 ) -> RelationshipType:
-    # Verify both entity types exist
     source = await db.get(EntityType, data.source_entity_type_id)
     target = await db.get(EntityType, data.target_entity_type_id)
     if source is None or target is None:
@@ -28,6 +30,15 @@ async def create_relationship_type(
     except IntegrityError:
         await db.rollback()
         raise
+
+    logger.info(
+        "relationship type created",
+        relationship_type_id=str(rel_type.id),
+        name=rel_type.name,
+        source=source.name,
+        target=target.name,
+        cardinality=rel_type.cardinality,
+    )
     return rel_type
 
 

@@ -1,5 +1,6 @@
 import uuid
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +19,7 @@ from bellona.services.entity_type import (
     patch_entity_type,
 )
 
+logger = structlog.get_logger()
 router = APIRouter(prefix="/entity-types", tags=["entity-types"])
 
 
@@ -28,6 +30,7 @@ async def create(data: EntityTypeCreate, db: AsyncSession = Depends(get_db)):
         await db.commit()
         return entity_type
     except IntegrityError:
+        logger.warning("entity type already exists", name=data.name)
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Entity type '{data.name}' already exists",
