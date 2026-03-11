@@ -62,12 +62,13 @@ def _build_prompt(schema: SchemaDiscovery, entity_types: list[dict[str, Any]]) -
 class MapperAgent:
     """Wraps an Agno Agent to propose field-to-property mappings."""
 
-    def __init__(self, api_key: str | None = None) -> None:
+    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
         self._api_key = api_key
+        self._model = model
 
     def _make_agent(self) -> Agent:
         return Agent(
-            model=Claude(id="claude-sonnet-4-6", api_key=self._api_key),
+            model=Claude(id=self._model, api_key=self._api_key),
             description="Data mapping expert that proposes field-to-property mappings.",
             instructions=_INSTRUCTIONS,
             output_model=MappingProposalContent,

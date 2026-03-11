@@ -59,12 +59,13 @@ def _build_prompt(
 class SchemaAgent:
     """Wraps an Agno Agent to propose new entity type definitions."""
 
-    def __init__(self, api_key: str | None = None) -> None:
+    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
         self._api_key = api_key
+        self._model = model
 
     def _make_agent(self) -> Agent:
         return Agent(
-            model=Claude(id="claude-sonnet-4-6", api_key=self._api_key),
+            model=Claude(id=self._model, api_key=self._api_key),
             description="Ontology expert that proposes new entity type definitions.",
             instructions=_INSTRUCTIONS,
             output_model=EntityTypeProposalContent,

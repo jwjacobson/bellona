@@ -34,6 +34,8 @@ class ProposalError(Exception):
 def _get_api_key() -> str:
     return get_settings().claude_api_key
 
+def _get_model() -> str:
+    return get_settings().claude_model
 
 async def _get_connector_or_raise(db: AsyncSession, connector_id: uuid.UUID) -> Connector:
     connector = await db.get(Connector, connector_id)
@@ -98,7 +100,7 @@ async def propose_mapping(
     if _mock_result is not None:
         proposal_content = _mock_result
     else:
-        agent = MapperAgent(api_key=_get_api_key())
+        agent = MapperAgent(api_key=_get_api_key(), model=_get_model())
         proposal_content = await agent.propose(schema, et_context)
 
     proposal = AgentProposal(
@@ -143,7 +145,7 @@ async def propose_schema(
     if _mock_result is not None:
         proposal_content = _mock_result
     else:
-        agent = SchemaAgent(api_key=_get_api_key())
+        agent = SchemaAgent(api_key=_get_api_key(), model=_get_model())
         proposal_content = await agent.propose(schema, et_context)
 
     proposal = AgentProposal(
@@ -303,5 +305,5 @@ async def check_quality(
     if _mock_result is not None:
         return _mock_result
 
-    agent = QualityAgent(api_key=_get_api_key())
+    agent = QualityAgent(api_key=_get_api_key(), model=_get_model())
     return await agent.check(entity_type_context, entities_context)
