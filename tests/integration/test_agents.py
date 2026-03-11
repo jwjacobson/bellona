@@ -235,6 +235,43 @@ async def test_confirm_schema_proposal_not_found(client: AsyncClient) -> None:
     assert response.status_code == 404
 
 
+async def test_confirm_mapping_already_approved(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    proposal = AgentProposal(
+        proposal_type="mapping",
+        status="approved",
+        content={"mappings": [], "overall_confidence": 0.5, "notes": ""},
+        confidence=0.5,
+    )
+    db_session.add(proposal)
+    await db_session.flush()
+
+    response = await client.post(f"/api/v1/mappings/{proposal.id}/confirm")
+    assert response.status_code == 422
+
+
+async def test_confirm_schema_already_approved(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    proposal = AgentProposal(
+        proposal_type="entity_type",
+        status="approved",
+        content={
+            "entity_type_name": "Foo",
+            "description": "",
+            "properties": [],
+            "reasoning": "",
+            "confidence": 0.5,
+        },
+        confidence=0.5,
+    )
+    db_session.add(proposal)
+    await db_session.flush()
+
+    response = await client.post(f"/api/v1/proposals/{proposal.id}/confirm")
+    assert response.status_code == 422
+
 # ── POST /api/v1/proposals/{id}/reject ────────────────────────────────────────
 
 

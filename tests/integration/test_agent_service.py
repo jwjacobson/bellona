@@ -23,6 +23,7 @@ from bellona.services.agent_service import (
     propose_mapping,
     propose_schema,
     reject_proposal,
+    ProposalError
 )
 from bellona.services.entity_type import create_entity_type
 from bellona.services.ingestion import create_connector
@@ -264,6 +265,19 @@ async def test_confirm_schema_proposal_wrong_type(db_session: AsyncSession) -> N
         await confirm_schema_proposal(db_session, proposal.id)
 
 
+async def test_confirm_already_approved_proposal(db_session: AsyncSession) -> None:
+    proposal = AgentProposal(
+        proposal_type="mapping",
+        status="approved",
+        content={"mappings": [], "overall_confidence": 0.5, "notes": ""},
+        confidence=0.5,
+    )
+    db_session.add(proposal)
+    await db_session.flush()
+
+    with pytest.raises(ProposalError, match="already"):
+        await confirm_mapping_proposal(db_session, proposal.id)
+
 # ── reject_proposal ────────────────────────────────────────────────────────────
 
 
@@ -287,6 +301,19 @@ async def test_reject_nonexistent_proposal(db_session: AsyncSession) -> None:
     with pytest.raises(ProposalError, match="not found"):
         await reject_proposal(db_session, uuid.uuid4())
 
+
+async def test_reject_already_approved_proposal(db_session: AsyncSession) -> None:
+    proposal = AgentProposal(
+        proposal_type="mapping",
+        status="approved",
+        content={"mappings": [], "overall_confidence": 0.5, "notes": ""},
+        confidence=0.5,
+    )
+    db_session.add(proposal)
+    await db_session.flush()
+
+    with pytest.raises(ProposalError, match="already"):
+        await reject_proposal(db_session, proposal.id)
 
 # ── list_proposals ─────────────────────────────────────────────────────────────
 
@@ -339,6 +366,5 @@ async def test_check_quality_returns_report(db_session: AsyncSession) -> None:
 
 
 async def test_check_quality_404_entity_type(db_session: AsyncSession) -> None:
-    from bellona.services.agent_service import ProposalError
     with pytest.raises(ProposalError, match="Entity type"):
         await check_quality(db_session, uuid.uuid4())

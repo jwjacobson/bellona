@@ -256,6 +256,10 @@ async def confirm_schema_proposal(
 async def reject_proposal(db: AsyncSession, proposal_id: uuid.UUID) -> AgentProposal:
     """Mark any proposal as rejected."""
     proposal = await _get_proposal_or_raise(db, proposal_id)
+    if proposal.status != "proposed":
+        raise ProposalError(
+            f"Proposal {proposal_id} is already '{proposal.status}'"
+        )
     proposal.status = "rejected"
     await db.flush()
     logger.info("proposal rejected", proposal_id=str(proposal_id))
