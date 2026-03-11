@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bellona.db.session import get_db
+from bellona.models.system import AgentProposal
 from bellona.schemas.agents import (
     AgentProposalRead,
     MappingProposeRequest,
@@ -56,21 +57,6 @@ async def propose_mapping_endpoint(
     return proposal  # type: ignore[return-value]
 
 
-@router.post("/mappings/{proposal_id}/confirm", response_model=FieldMappingRead)
-async def confirm_mapping_endpoint(
-    proposal_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-) -> FieldMappingRead:
-    try:
-        field_mapping = await confirm_mapping_proposal(db, proposal_id)
-    except ProposalError as exc:
-        msg = str(exc)
-        if "not found" in msg:
-            raise _not_found(msg)
-        raise _unprocessable(msg)
-    await db.commit()
-    return field_mapping  # type: ignore[return-value]
-
 
 # ── Schema Agent ──────────────────────────────────────────────────────────────
 
@@ -95,20 +81,31 @@ async def propose_schema_endpoint(
 # ── Generic Proposal Actions ──────────────────────────────────────────────────
 
 
-@router.post("/proposals/{proposal_id}/confirm", response_model=EntityTypeRead)
+@router.post("/proposals/{proposal_id}/confirm")
 async def confirm_proposal_endpoint(
     proposal_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-) -> EntityTypeRead:
+):
     try:
-        entity_type = await confirm_schema_proposal(db, proposal_id)
+        proposal = await db.get(AgentProposal, proposal_id)
+        if proposal is None:
+            raise ProposalError(f"Proposal {proposal_id} not found")
+
+        if proposal.proposal_type == "mapping":
+            result = await confirm_mapping_proposal(db, proposal_id)
+            await db.commit()
+            return FieldMappingRead.model_validate(result)
+        elif proposal.proposal_type == "entity_type":
+            result = await confirm_schema_proposal(db, proposal_id)
+            await db.commit()
+            return EntityTypeRead.model_validate(result)
+        else:
+            raise ProposalError(f"Unknown proposal type: {proposal.proposal_type}")
     except ProposalError as exc:
         msg = str(exc)
         if "not found" in msg:
             raise _not_found(msg)
         raise _unprocessable(msg)
-    await db.commit()
-    return entity_type  # type: ignore[return-value]
 
 
 @router.post("/proposals/{proposal_id}/reject", response_model=AgentProposalRead)

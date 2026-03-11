@@ -100,8 +100,11 @@ async def propose_mapping(
     if _mock_result is not None:
         proposal_content = _mock_result
     else:
-        agent = MapperAgent(api_key=_get_api_key(), model=_get_model())
-        proposal_content = await agent.propose(schema, et_context)
+        try:
+            agent = MapperAgent(api_key=_get_api_key(), model=_get_model())
+            proposal_content = await agent.propose(schema, et_context)
+        except Exception as exc:
+            raise ProposalError(f"Mapper agent failed: {exc}") from exc
 
     proposal = AgentProposal(
         proposal_type="mapping",
@@ -145,8 +148,11 @@ async def propose_schema(
     if _mock_result is not None:
         proposal_content = _mock_result
     else:
-        agent = SchemaAgent(api_key=_get_api_key(), model=_get_model())
-        proposal_content = await agent.propose(schema, et_context)
+        try:
+            agent = SchemaAgent(api_key=_get_api_key(), model=_get_model())
+            proposal_content = await agent.propose(schema, et_context)
+        except Exception as exc:
+            raise ProposalError(f"Schema agent failed: {exc}") from exc
 
     proposal = AgentProposal(
         proposal_type="entity_type",
@@ -309,5 +315,8 @@ async def check_quality(
     if _mock_result is not None:
         return _mock_result
 
-    agent = QualityAgent(api_key=_get_api_key(), model=_get_model())
-    return await agent.check(entity_type_context, entities_context)
+    try:
+        agent = QualityAgent(api_key=_get_api_key(), model=_get_model())
+        return await agent.check(entity_type_context, entities_context)
+    except Exception as exc:
+        raise ProposalError(f"Quality agent failed: {exc}") from exc
