@@ -28,6 +28,8 @@ pytestmark = [
 def _api_key() -> str:
     return get_settings().claude_api_key
 
+def _model() -> str:
+    return get_settings().claude_model
 
 PERSON_SCHEMA = SchemaDiscovery(
     fields=[
@@ -65,7 +67,7 @@ STOCK_SCHEMA = SchemaDiscovery(
 
 
 async def test_live_mapper_agent_returns_valid_proposal() -> None:
-    agent = MapperAgent(api_key=_api_key())
+    agent = MapperAgent(api_key=_api_key(), model=_model())
     result = await agent.propose(PERSON_SCHEMA, PERSON_ENTITY_TYPES)
 
     assert isinstance(result, MappingProposalContent)
@@ -78,7 +80,7 @@ async def test_live_mapper_agent_returns_valid_proposal() -> None:
 
 
 async def test_live_mapper_agent_confidence_scores_valid() -> None:
-    agent = MapperAgent(api_key=_api_key())
+    agent = MapperAgent(api_key=_api_key(), model=_model())
     result = await agent.propose(PERSON_SCHEMA, PERSON_ENTITY_TYPES)
 
     for m in result.mappings:
@@ -92,7 +94,7 @@ async def test_live_mapper_agent_confidence_scores_valid() -> None:
 
 
 async def test_live_schema_agent_proposes_entity_type() -> None:
-    agent = SchemaAgent(api_key=_api_key())
+    agent = SchemaAgent(api_key=_api_key(), model=_model())
     result = await agent.propose(STOCK_SCHEMA, [])
 
     assert isinstance(result, EntityTypeProposalContent)
@@ -107,7 +109,7 @@ async def test_live_schema_agent_proposes_entity_type() -> None:
 
 async def test_live_schema_agent_avoids_existing_types() -> None:
     """Agent should propose a name distinct from existing 'Person' type."""
-    agent = SchemaAgent(api_key=_api_key())
+    agent = SchemaAgent(api_key=_api_key(), model=_model())
     existing = [{"name": "Person", "description": "A human being", "properties": []}]
     result = await agent.propose(STOCK_SCHEMA, existing)
 
@@ -115,7 +117,7 @@ async def test_live_schema_agent_avoids_existing_types() -> None:
 
 
 async def test_live_schema_agent_valid_property_data_types() -> None:
-    agent = SchemaAgent(api_key=_api_key())
+    agent = SchemaAgent(api_key=_api_key(), model=_model())
     result = await agent.propose(STOCK_SCHEMA, [])
 
     valid_types = {"string", "integer", "float", "boolean", "date", "datetime", "enum", "json"}
@@ -140,7 +142,7 @@ async def test_live_quality_agent_on_clean_data() -> None:
         {"id": "3", "properties": {"name": "Carol", "age": 40}},
     ]
 
-    agent = QualityAgent(api_key=_api_key())
+    agent = QualityAgent(api_key=_api_key(), model=_model())
     result = await agent.check(entity_type, entities)
 
     assert isinstance(result, QualityReport)
@@ -165,7 +167,7 @@ async def test_live_quality_agent_detects_issues() -> None:
         {"id": "4", "properties": {"name": None, "age": 25}},  # missing required
     ]
 
-    agent = QualityAgent(api_key=_api_key())
+    agent = QualityAgent(api_key=_api_key(), model=_model())
     result = await agent.check(entity_type, entities)
 
     assert isinstance(result, QualityReport)

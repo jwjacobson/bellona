@@ -65,7 +65,7 @@ class QualityAgent:
             model=Claude(id=self._model, api_key=self._api_key),
             description="Data quality analyst that identifies issues in entity records.",
             instructions=_INSTRUCTIONS,
-            output_model=QualityReport,
+            output_schema=QualityReport,
         )
 
     async def _run_agent(self, prompt: str) -> QualityReport:

@@ -71,7 +71,7 @@ class MapperAgent:
             model=Claude(id=self._model, api_key=self._api_key),
             description="Data mapping expert that proposes field-to-property mappings.",
             instructions=_INSTRUCTIONS,
-            output_model=MappingProposalContent,
+            output_schema=MappingProposalContent,
         )
 
     async def _run_agent(self, prompt: str) -> MappingProposalContent:

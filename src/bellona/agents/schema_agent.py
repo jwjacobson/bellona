@@ -68,7 +68,7 @@ class SchemaAgent:
             model=Claude(id=self._model, api_key=self._api_key),
             description="Ontology expert that proposes new entity type definitions.",
             instructions=_INSTRUCTIONS,
-            output_model=EntityTypeProposalContent,
+            output_schema=EntityTypeProposalContent,
         )
 
     async def _run_agent(self, prompt: str) -> EntityTypeProposalContent:
