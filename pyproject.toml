@@ -8,7 +8,9 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "agno>=2.5.9",
     "alembic>=1.18.4",
+    "anthropic>=0.84.0",
     "asyncpg>=0.31.0",
     "chardet>=5.2.0",
     "fastapi[standard]>=0.135.1",

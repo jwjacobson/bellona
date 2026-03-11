@@ -47,9 +47,6 @@ async def list_connectors(db: AsyncSession) -> list[Connector]:
     return list(result.scalars().all())
 
 
-# ── Field Mapping CRUD ────────────────────────────────────────────────────────
-
-
 async def create_field_mapping(
     db: AsyncSession,
     connector_id: uuid.UUID,
@@ -80,9 +77,6 @@ async def get_field_mapping(db: AsyncSession, mapping_id: uuid.UUID) -> FieldMap
     return await db.get(FieldMapping, mapping_id)
 
 
-# ── Ingestion Job CRUD ────────────────────────────────────────────────────────
-
-
 async def create_ingestion_job(db: AsyncSession, connector_id: uuid.UUID) -> IngestionJob:
     job = IngestionJob(connector_id=connector_id, status="pending")
     db.add(job)
@@ -93,9 +87,6 @@ async def create_ingestion_job(db: AsyncSession, connector_id: uuid.UUID) -> Ing
 
 async def get_ingestion_job(db: AsyncSession, job_id: uuid.UUID) -> IngestionJob | None:
     return await db.get(IngestionJob, job_id)
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 
 def _create_connector_instance(connector: Connector) -> BaseConnector:
@@ -163,9 +154,6 @@ async def _load_entity_type(db: AsyncSession, entity_type_id: uuid.UUID) -> Enti
         .execution_options(populate_existing=True)
     )
     return res.scalar_one_or_none()
-
-
-# ── Ingestion Execution ───────────────────────────────────────────────────────
 
 
 async def _execute_ingestion_job(job_id: uuid.UUID, db: AsyncSession) -> None:
