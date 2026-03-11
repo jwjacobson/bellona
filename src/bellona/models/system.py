@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -58,3 +58,22 @@ class FieldMapping(Base):
 
     connector: Mapped["Connector"] = relationship()
     entity_type: Mapped["EntityType"] = relationship()  # type: ignore[name-defined]
+
+
+class AgentProposal(Base):
+    __tablename__ = "agent_proposals"
+
+    id: Mapped[uuid.UUID] = mapped_column(default=uuid.uuid4, primary_key=True)
+    proposal_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="proposed", nullable=False)
+    content: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    connector_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("connectors.id", ondelete="SET NULL"), nullable=True
+    )
+    entity_type_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("entity_types.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

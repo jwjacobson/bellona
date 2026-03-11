@@ -3,7 +3,8 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from bellona.core.config import settings
+from bellona.core.config import get_settings
+settings = get_settings()
 from bellona.models import Base  # noqa: F401 — imports all models for autogenerate
 
 config = context.config
