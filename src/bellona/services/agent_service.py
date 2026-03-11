@@ -31,9 +31,6 @@ class ProposalError(Exception):
     """Raised when a proposal operation cannot be completed."""
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-
 def _get_api_key() -> str:
     return get_settings().claude_api_key
 
@@ -82,9 +79,6 @@ def _entity_types_to_context(entity_types: list[EntityType]) -> list[dict[str, A
     ]
 
 
-# ── propose_mapping ───────────────────────────────────────────────────────────
-
-
 async def propose_mapping(
     db: AsyncSession,
     connector_id: uuid.UUID,
@@ -125,9 +119,6 @@ async def propose_mapping(
         confidence=proposal_content.overall_confidence,
     )
     return proposal
-
-
-# ── propose_schema ────────────────────────────────────────────────────────────
 
 
 async def propose_schema(
@@ -174,9 +165,6 @@ async def propose_schema(
     return proposal
 
 
-# ── confirm_mapping_proposal ──────────────────────────────────────────────────
-
-
 async def confirm_mapping_proposal(
     db: AsyncSession, proposal_id: uuid.UUID
 ) -> FieldMapping:
@@ -217,9 +205,6 @@ async def confirm_mapping_proposal(
         field_count=len(clean_mappings),
     )
     return field_mapping
-
-
-# ── confirm_schema_proposal ───────────────────────────────────────────────────
 
 
 async def confirm_schema_proposal(
@@ -266,9 +251,6 @@ async def confirm_schema_proposal(
     return entity_type
 
 
-# ── reject_proposal ───────────────────────────────────────────────────────────
-
-
 async def reject_proposal(db: AsyncSession, proposal_id: uuid.UUID) -> AgentProposal:
     """Mark any proposal as rejected."""
     proposal = await _get_proposal_or_raise(db, proposal_id)
@@ -276,9 +258,6 @@ async def reject_proposal(db: AsyncSession, proposal_id: uuid.UUID) -> AgentProp
     await db.flush()
     logger.info("proposal rejected", proposal_id=str(proposal_id))
     return proposal
-
-
-# ── list_proposals ────────────────────────────────────────────────────────────
 
 
 async def list_proposals(db: AsyncSession) -> list[AgentProposal]:
@@ -289,9 +268,6 @@ async def list_proposals(db: AsyncSession) -> list[AgentProposal]:
         .order_by(AgentProposal.created_at.desc())
     )
     return list(result.scalars().all())
-
-
-# ── check_quality ─────────────────────────────────────────────────────────────
 
 
 async def check_quality(
