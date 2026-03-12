@@ -186,12 +186,15 @@ async def confirm_mapping_proposal(
         raise ProposalError(
             f"Proposal {proposal_id} is already '{proposal.status}'"
         )
-
+    entity_type = await _get_entity_type_or_raise(db, proposal.entity_type_id)
     # Extract mapping entries (strip agent-only fields like reasoning/confidence).
     raw_mappings = proposal.content.get("mappings", [])
     clean_mappings = [
-        {"source_field": m["source_field"], "target_property": m["target_property"]}
-        for m in raw_mappings
+    {
+        "source_field": m["source_field"],
+        "target_property": m["target_property"].removeprefix(f"{entity_type.name}."),
+    }
+    for m in raw_mappings
     ]
 
     field_mapping = FieldMapping(

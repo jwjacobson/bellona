@@ -18,6 +18,7 @@ propose how each source field maps to properties in an existing ontology entity 
 Rules:
 - Map each source field to the best-matching ontology property based on name similarity, \
   data type compatibility, and sample values.
+- Use bare property names in target_property (e.g. "name", not "EntityType.name").
 - Assign a confidence score (0.0–1.0) to each mapping.
 - If a source field has no reasonable match, omit it from the mappings list.
 - Provide brief reasoning for each mapping.
