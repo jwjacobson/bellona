@@ -112,7 +112,11 @@ class CSVConnector(BaseConnector):
             reader = csv.DictReader(io.StringIO(content), dialect=dialect)
             return [
                 SourceRecord(
-                    data={k: (v if v and v.strip() else None) for k, v in row.items()},
+                    data={
+                        k: (v if v and v.strip() else None)
+                        for k, v in row.items()
+                        if k is not None
+                    },
                     source_metadata={
                         "connector_id": connector_id,
                         "source_identifier": source_identifier,
