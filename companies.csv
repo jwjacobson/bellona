@@ -1,0 +1,21 @@
+name,industry,employee_count,founded_date,annual_revenue_usd,headquarters,is_public
+Arcturus Dynamics,Aerospace,4200,2003-06-15,890000000,Denver,true
+Bloom Financial,Fintech,310,2017-03-01,42000000,New York,false
+Catalyze Health,Healthcare,1500,2011-09-20,275000000,Boston,true
+Driftwood Analytics,Data Analytics,85,2020-11-10,8500000,Austin,false
+EverGrid Energy,Renewable Energy,2200,2008-04-22,620000000,San Francisco,true
+Foxglove Robotics,Robotics,140,2019-07-07,15000000,Pittsburgh,false
+Granite Peak Insurance,Insurance,5800,1995-01-30,2100000000,Hartford,true
+Helix Bioworks,Biotechnology,420,2015-05-18,67000000,Cambridge,false
+Ironclad Logistics,Logistics,3100,2001-08-12,450000000,Memphis,true
+Juniper Creative,Advertising,60,2021-02-14,3200000,Portland,false
+Keystone Manufacturing,Manufacturing,7500,1988-11-03,1800000000,Detroit,true
+Luma Optics,Semiconductors,290,2018-06-30,38000000,San Jose,false
+Meridian Foods,Food & Beverage,1800,2006-03-25,520000000,Chicago,true
+Northvane Software,Enterprise Software,650,2014-10-01,95000000,Seattle,false
+Obsidian Security,Cybersecurity,400,2016-12-08,72000000,Arlington,false
+Pinecrest Education,EdTech,175,2019-04-15,12000000,Nashville,false
+Quarry Capital,Private Equity,45,2012-07-22,,,New York,false
+Ridgeline Pharma,Pharmaceuticals,3400,1999-02-17,980000000,Philadelphia,true
+Summerfield Realty,Real Estate,220,2010-08-05,41000000,Miami,false
+Terravolt Motors,Electric Vehicles,1100,2017-09-30,160000000,Los Angeles,false
