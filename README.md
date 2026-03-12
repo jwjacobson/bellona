@@ -14,19 +14,20 @@ Currently, Bellona has been built through Phase 3 of the [development roadmap](S
 
 To try it out (using the provided dummy `companies.csv` as input):
 
-### 0. Migrate the databse and start the server
+### 0. Migrate the database and start the server
 ```bash
 uv run alembic upgrade head
 uv run fastapi dev src/bellona/main.py # Or, if you have just installed, just run
 ```
 
+Then, in another terminal:
 ### 1. Upload a CSV
 ```bash
 curl -X POST http://localhost:8000/api/v1/connectors/csv/upload \
   -F "file=@companies.csv" \
   -F "name=companies"
 ```
-#Note the `id` from the response — this is your **connector ID**.
+#Note the `id` from the response -- this is your **connector ID**.
 
 ### 2. Propose a schema
 Ask the Schema Agent to analyze the CSV and propose an entity type:
@@ -35,13 +36,13 @@ curl -X POST http://localhost:8000/api/v1/schema/propose \
   -H "Content-Type: application/json" \
   -d '{"connector_id": ""}'
 ```
-The agent returns a proposed entity type with property definitions, data types, and a confidence score. Note the proposal `id` and the `entity_type_id` after confirmation.
+The agent returns a proposed entity type with property definitions, data types, and a confidence score. Note the `id` here, which is your **proposal ID**. 
 
 ### 3. Confirm the schema proposal
 ```bash
 curl -X POST http://localhost:8000/api/v1/proposals//confirm
 ```
-This creates the entity type in the database.
+This creates the entity type in the database. The `id` field of this response is the **entity type ID**.
 
 ### 4. Propose field mappings
 Ask the Mapper Agent how the CSV columns map to the new entity type's properties:
@@ -53,7 +54,7 @@ curl -X POST http://localhost:8000/api/v1/mappings/propose \
     "entity_type_id": ""
   }'
 ```
-The agent returns per-field mappings with confidence scores and reasoning.
+The agent returns per-field mappings with confidence scores and reasoning. The `id` in this response is a *new* **proposal ID**: the ID of the mapping proposal.
 
 ### 5. Confirm the mapping proposal
 ```bash
@@ -65,6 +66,7 @@ Trigger a sync job to load the CSV rows through the confirmed mapping:
 ```bash
 curl -X POST http://localhost:8000/api/v1/connectors//sync
 ```
+The `id` in the response is the **job ID**.
 
 ### 7. Verify the data
 Check the ingestion job status:
