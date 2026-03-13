@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from bellona.agents.mapper_agent import MapperAgent
 from bellona.agents.quality_agent import QualityAgent
+from bellona.agents.query_agent import QueryAgent
 from bellona.agents.schema_agent import SchemaAgent
 from bellona.core.config import get_settings
 from bellona.models.entities import Entity
@@ -17,9 +18,12 @@ from bellona.models.system import AgentProposal, Connector, FieldMapping
 from bellona.schemas.agents import (
     EntityTypeProposalContent,
     MappingProposalContent,
+    NaturalLanguageQueryResponse,
     ProposedPropertyDefinition,
     QualityReport,
+    QueryAgentResult,
 )
+from bellona.schemas.query import EntityQuery, FilterCondition, FilterGroup, SortClause
 from bellona.schemas.ontology import EntityTypeCreate, PropertyDefinitionCreate
 from bellona.services.entity_type import create_entity_type
 from bellona.services.ingestion import _create_connector_instance, _load_entity_type
@@ -323,3 +327,87 @@ async def check_quality(
         return await agent.check(entity_type_context, entities_context)
     except Exception as exc:
         raise ProposalError(f"Quality agent failed: {exc}") from exc
+
+
+async def run_nl_query(
+    db: AsyncSession,
+    question: str,
+    entity_type_id: uuid.UUID | None = None,
+    *,
+    _mock_result: QueryAgentResult | None = None,
+) -> NaturalLanguageQueryResponse:
+    """Translate a natural language question to a structured query and execute it."""
+    from bellona.services.query import query_entities
+
+    # Build ontology context
+    if entity_type_id is not None:
+        et = await _get_entity_type_or_raise(db, entity_type_id)
+        entity_types = [et]
+    else:
+        all_et_result = await db.execute(
+            select(EntityType).options(selectinload(EntityType.property_definitions))
+        )
+        entity_types = list(all_et_result.scalars().all())
+
+    et_context = _entity_types_to_context(entity_types)
+
+    if _mock_result is not None:
+        agent_result = _mock_result
+    else:
+        try:
+            agent = QueryAgent(api_key=_get_api_key(), model=_get_model())
+            agent_result = await agent.translate(question, et_context)
+        except Exception as exc:
+            raise ProposalError(f"Query agent failed: {exc}") from exc
+
+    # Resolve entity_type_name → entity_type_id
+    resolved_et_id: uuid.UUID | None = entity_type_id
+    if resolved_et_id is None and agent_result.entity_type_name is not None:
+        matched = next(
+            (et for et in entity_types if et.name == agent_result.entity_type_name),
+            None,
+        )
+        if matched is not None:
+            resolved_et_id = matched.id
+
+    # Build EntityQuery from agent result
+    filters = None
+    if agent_result.filters is not None:
+        raw = agent_result.filters
+        if "op" in raw:
+            filters = FilterGroup.model_validate(raw)
+        else:
+            filters = FilterCondition.model_validate(raw)
+
+    sort = [
+        SortClause(
+            property=s["property"],
+            direction=s.get("direction", "asc"),
+        )
+        for s in agent_result.sort
+    ]
+
+    entity_query = EntityQuery(
+        entity_type_id=resolved_et_id,
+        filters=filters,
+        sort=sort,
+        page=1,
+        page_size=50,
+    )
+
+    page = await query_entities(db, entity_query)
+
+    logger.info(
+        "nl query executed",
+        question=question,
+        entity_type_name=agent_result.entity_type_name,
+        total=page.total,
+        confidence=agent_result.confidence,
+    )
+    return NaturalLanguageQueryResponse(
+        question=question,
+        explanation=agent_result.explanation,
+        query_used=entity_query.model_dump(mode="json"),
+        results=[item.model_dump(mode="json") for item in page.items],
+        total_results=page.total,
+    )

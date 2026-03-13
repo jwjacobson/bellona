@@ -1,7 +1,7 @@
 import uuid
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -66,6 +66,24 @@ async def get_entity_type(
 async def list_entity_types(db: AsyncSession) -> list[EntityType]:
     result = await db.execute(select(EntityType).order_by(EntityType.name))
     return list(result.scalars().all())
+
+
+async def create_entity_type_gin_index(entity_type_id: uuid.UUID) -> None:
+    """Background task: create a GIN index on entities.properties for this entity type."""
+    from bellona.db.session import engine
+
+    index_name = f"idx_entities_props_gin_{entity_type_id.hex}"
+    ddl = text(
+        f"CREATE INDEX IF NOT EXISTS {index_name} "
+        f"ON entities USING gin (properties) "
+        f"WHERE entity_type_id = '{entity_type_id}'"
+    )
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(ddl)
+        logger.info("GIN index created", entity_type_id=str(entity_type_id), index_name=index_name)
+    except Exception:
+        logger.warning("GIN index creation failed", entity_type_id=str(entity_type_id), exc_info=True)
 
 
 async def patch_entity_type(
