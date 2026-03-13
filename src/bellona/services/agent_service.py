@@ -3,6 +3,7 @@ import uuid
 from typing import Any
 
 import structlog
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -364,19 +365,24 @@ async def run_nl_query(
     resolved_et_id: uuid.UUID | None = entity_type_id
     if resolved_et_id is None and agent_result.entity_type_name is not None:
         matched = next(
-            (et for et in entity_types if et.name == agent_result.entity_type_name),
+           (et for et in entity_types if et.name.lower() == agent_result.entity_type_name.lower()),
             None,
         )
         if matched is not None:
             resolved_et_id = matched.id
+        else:
+            raise ProposalError(
+                f"Agent selected entity type '{agent_result.entity_type_name}' "
+                f"which does not exist in the ontology"
+            )
 
     # Build EntityQuery from agent result
     filters = None
     if agent_result.filters is not None:
         raw = agent_result.filters
-        if "op" in raw:
+        try:
             filters = FilterGroup.model_validate(raw)
-        else:
+        except ValidationError:
             filters = FilterCondition.model_validate(raw)
 
     sort = [
@@ -395,7 +401,10 @@ async def run_nl_query(
         page_size=50,
     )
 
-    page = await query_entities(db, entity_query)
+    try:
+        page = await query_entities(db, entity_query)
+    except ValueError as exc:
+        raise ProposalError(f"Query execution failed: {exc}") from exc
 
     logger.info(
         "nl query executed",

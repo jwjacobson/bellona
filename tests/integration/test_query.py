@@ -159,10 +159,8 @@ async def test_nl_query_unresolvable_entity_type(
             json={"question": "Something obscure"},
         )
 
-    assert response.status_code == 200
-    data = response.json()
-    assert "explanation" in data
-
+    assert response.status_code == 422
+    assert "NonExistentType" in response.json()["detail"]
 
 async def test_nl_query_with_entity_type_hint(
     client: AsyncClient, db_session: AsyncSession
