@@ -75,3 +75,29 @@ class AgentProposalRead(BaseModel):
     connector_id: uuid.UUID | None
     entity_type_id: uuid.UUID | None
     created_at: datetime
+
+
+# ── Query Agent ────────────────────────────────────────────────────────────────
+
+
+class QueryAgentResult(BaseModel):
+    """Structured output from the Query Agent."""
+
+    entity_type_name: str | None = None
+    filters: dict[str, Any] | None = None
+    sort: list[dict[str, Any]] = Field(default_factory=list)
+    explanation: str
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class NaturalLanguageQueryRequest(BaseModel):
+    question: str
+    entity_type_id: uuid.UUID | None = None
+
+
+class NaturalLanguageQueryResponse(BaseModel):
+    question: str
+    explanation: str
+    query_used: dict[str, Any] | None
+    results: list[dict[str, Any]]
+    total_results: int
