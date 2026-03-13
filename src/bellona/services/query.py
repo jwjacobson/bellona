@@ -6,6 +6,7 @@ import uuid
 
 import structlog
 from sqlalchemy import and_, cast, func, or_, select
+from sqlalchemy.exc import DataError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.types import Numeric
 
@@ -42,7 +43,8 @@ def _filter_condition_to_clause(cond: FilterCondition):
         case "lte":
             return cast(col, Numeric) <= cond.value
         case "contains":
-            return col.ilike(f"%{cond.value}%")
+            escaped = str(cond.value).replace("%", r"\%").replace("_", r"\_")
+            return col.ilike(f"%{escaped}%", escape="\\")
         case "in":
             values = cond.value if isinstance(cond.value, list) else [cond.value]
             return col.in_([str(v) for v in values])
@@ -74,12 +76,21 @@ async def query_entities(db: AsyncSession, query: EntityQuery) -> EntityPage:
         stmt = stmt.where(_filter_node_to_clause(query.filters))
 
     # Count total before pagination
-    count_stmt = select(func.count()).select_from(stmt.subquery())
-    total: int = (await db.execute(count_stmt)).scalar_one()
+    try:
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total: int = (await db.execute(count_stmt)).scalar_one()
+    except DataError as exc:
+        raise ValueError(
+            f"Filter type mismatch (e.g. numeric operator on a string property): {exc.orig}"
+        ) from exc
 
     # Sort
     for sort_clause in query.sort:
         col = Entity.properties[sort_clause.property].astext
+        if sort_clause.data_type == "numeric":
+            col = cast(col, Numeric)
+        elif sort_clause.data_type == "date":
+            col = cast(col, Date)
         stmt = stmt.order_by(col.desc() if sort_clause.direction == "desc" else col.asc())
 
     if not query.sort:

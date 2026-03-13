@@ -40,6 +40,7 @@ FilterNode = Union[FilterGroup, FilterCondition]
 class SortClause(BaseModel):
     property: str
     direction: Literal["asc", "desc"] = "asc"
+    data_type: Literal["string", "numeric", "date"] = "string"
 
 
 class EntityQuery(BaseModel):
