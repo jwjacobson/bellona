@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 import structlog
 from fastapi import FastAPI
 
+from bellona.api.ui import router as ui_router
 from bellona.api.v1 import router as v1_router
 from bellona.core.config import get_settings
 from bellona.core.logging import setup_logging
@@ -21,6 +22,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Bellona", version="0.1.0", lifespan=lifespan)
 app.include_router(v1_router)
+app.include_router(ui_router)
 
 
 @app.get("/health")

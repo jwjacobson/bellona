@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}Relationship Types — Bellona{% endblock %}
+
+{% block content %}
+<div class="flex gap-6">
+
+  <!-- Relationship types list -->
+  <div class="flex-1">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-xl font-bold tracking-wide text-stone-100">Relationship Types</h1>
+      <a href="/ui/ontology" class="px-4 py-2 bg-stone-600 text-stone-100 text-sm font-medium border border-stone-500 hover:bg-stone-500">
+        ← Entity Types
+      </a>
+    </div>
+
+    {% if rel_types %}
+    <table class="w-full text-sm border border-stone-600">
+      <thead>
+        <tr class="bg-stone-800 text-stone-300">
+          <th class="px-4 py-2 text-left font-medium">Name</th>
+          <th class="px-4 py-2 text-left font-medium">Source</th>
+          <th class="px-4 py-2 text-left font-medium">Target</th>
+          <th class="px-4 py-2 text-left font-medium">Cardinality</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rt in rel_types %}
+        <tr class="border-t border-stone-600 hover:bg-stone-600">
+          <td class="px-4 py-2 font-medium text-stone-100">{{ rt.name }}</td>
+          <td class="px-4 py-2 text-stone-300">{{ rt.source_entity_type_id }}</td>
+          <td class="px-4 py-2 text-stone-300">{{ rt.target_entity_type_id }}</td>
+          <td class="px-4 py-2 text-teal-400">{{ rt.cardinality }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-stone-400 text-sm py-4">No relationship types defined yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Create Relationship Type form -->
+  <div class="w-80 shrink-0">
+    <h2 class="text-base font-bold tracking-wide text-stone-100 mb-3">New Relationship Type</h2>
+    {% if entity_types %}
+    <form method="post" action="/ui/ontology/relationships" class="space-y-3">
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Name *</label>
+        <input type="text" name="name" required
+               class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Source Entity Type *</label>
+        <select name="source_entity_type_id"
+                class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+          {% for et in entity_types %}
+          <option value="{{ et.id }}">{{ et.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Target Entity Type *</label>
+        <select name="target_entity_type_id"
+                class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+          {% for et in entity_types %}
+          <option value="{{ et.id }}">{{ et.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Cardinality *</label>
+        <select name="cardinality"
+                class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+          <option value="one-to-one">one-to-one</option>
+          <option value="one-to-many">one-to-many</option>
+          <option value="many-to-many">many-to-many</option>
+        </select>
+      </div>
+      <button type="submit"
+              class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-4 border border-emerald-600">
+        Create Relationship Type
+      </button>
+    </form>
+    {% else %}
+    <p class="text-stone-400 text-sm">Define at least two entity types first.</p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

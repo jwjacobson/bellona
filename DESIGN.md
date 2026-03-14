@@ -8,7 +8,7 @@
 | Dark background | `stone-800` | `#292524` |
 | Text | `stone-100` | `#f5f5f4` |
 | Accent | `emerald-700` | `#15803d` |
-| Secondary | `olive-900` | `#1a2e05` |
+| Secondary | `olive-900` | `#365314` |
 | Info | `teal-400` | `#2dd4bf` |
 | Warning | `amber-500` | `#f59e0b` |
 | Danger | `red-400` | `#f87171` |

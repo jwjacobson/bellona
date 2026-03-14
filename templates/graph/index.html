@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}Graph — Bellona{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-xl font-bold tracking-wide text-stone-100">Relationship Graph</h1>
+    <p class="text-stone-400 text-sm mt-1">Entity relationships visualized. Up to 200 entities shown.</p>
+  </div>
+  <div id="graph-status" class="text-stone-400 text-sm"></div>
+</div>
+
+<div id="cy" class="border border-stone-600 bg-stone-800" style="height: 600px; width: 100%;"></div>
+
+<div class="mt-3 flex gap-6 text-xs text-stone-500">
+  <span>Drag to pan · Scroll to zoom · Click node to highlight connections</span>
+  <span id="graph-counts"></span>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>
+<script>
+  const TYPE_COLORS = [
+    '#15803d', '#0f766e', '#0e7490', '#1d4ed8', '#7c3aed',
+    '#b45309', '#be185d', '#dc2626', '#65a30d', '#0369a1',
+  ];
+
+  async function loadGraph() {
+    document.getElementById('graph-status').textContent = 'Loading…';
+    let data;
+    try {
+      const res = await fetch('/ui/graph/data');
+      data = await res.json();
+    } catch (e) {
+      document.getElementById('graph-status').textContent = 'Failed to load data.';
+      return;
+    }
+
+    // Assign colors by entity type
+    const typeIndex = {};
+    let colorIdx = 0;
+    for (const node of data.nodes) {
+      const t = node.data.entity_type_id;
+      if (!(t in typeIndex)) typeIndex[t] = TYPE_COLORS[colorIdx++ % TYPE_COLORS.length];
+    }
+
+    const elements = [
+      ...data.nodes.map(n => ({
+        group: 'nodes',
+        data: n.data,
+        style: { 'background-color': typeIndex[n.data.entity_type_id] || '#44403c' },
+      })),
+      ...data.edges.map(e => ({ group: 'edges', data: e.data })),
+    ];
+
+    const cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'color': '#f5f5f4',
+            'font-size': '10px',
+            'font-family': 'ui-monospace, monospace',
+            'text-valign': 'bottom',
+            'text-margin-y': '4px',
+            'width': '28px',
+            'height': '28px',
+            'border-width': '1px',
+            'border-color': '#57534e',
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'width': 1,
+            'line-color': '#57534e',
+            'target-arrow-color': '#57534e',
+            'target-arrow-shape': 'triangle',
+            'curve-style': 'bezier',
+            'label': 'data(label)',
+            'font-size': '8px',
+            'color': '#78716c',
+            'font-family': 'ui-monospace, monospace',
+          }
+        },
+        {
+          selector: 'node:selected',
+          style: {
+            'border-color': '#2dd4bf',
+            'border-width': '2px',
+          }
+        },
+        {
+          selector: '.faded',
+          style: { 'opacity': 0.2 }
+        },
+      ],
+      layout: {
+        name: data.nodes.length > 50 ? 'cose' : 'cose',
+        animate: false,
+        padding: 30,
+        nodeRepulsion: 8000,
+        idealEdgeLength: 80,
+      },
+      backgroundColor: '#292524',
+    });
+
+    // Highlight connected nodes on click
+    cy.on('tap', 'node', function(evt) {
+      const node = evt.target;
+      cy.elements().addClass('faded');
+      node.removeClass('faded');
+      node.connectedEdges().removeClass('faded');
+      node.connectedEdges().connectedNodes().removeClass('faded');
+    });
+    cy.on('tap', function(evt) {
+      if (evt.target === cy) cy.elements().removeClass('faded');
+    });
+
+    const nodeCount = data.nodes.length;
+    const edgeCount = data.edges.length;
+    document.getElementById('graph-status').textContent = '';
+    document.getElementById('graph-counts').textContent =
+      `${nodeCount} node${nodeCount !== 1 ? 's' : ''} · ${edgeCount} edge${edgeCount !== 1 ? 's' : ''}`;
+
+    if (nodeCount === 0) {
+      document.getElementById('graph-status').textContent = 'No entities to display yet.';
+    }
+  }
+
+  loadGraph();
+</script>
+{% endblock %}

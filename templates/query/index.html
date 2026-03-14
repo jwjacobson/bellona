@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Query — Bellona{% endblock %}
+
+{% block content %}
+<h1 class="text-xl font-bold tracking-wide text-stone-100 mb-2">Natural Language Query</h1>
+<p class="text-stone-400 text-sm mb-6">Ask questions about your data in plain English.</p>
+
+<div class="max-w-2xl">
+  <form method="post" action="/ui/query" class="flex gap-2 mb-6">
+    <input type="text" name="question" value="{{ question }}" required
+           placeholder="Which companies were founded after 2020?"
+           class="flex-1 bg-stone-800 border border-stone-600 text-stone-100 px-4 py-3 text-sm focus:outline-none focus:border-emerald-600">
+    <button type="submit"
+            class="px-6 py-3 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium border border-emerald-600">
+      Query
+    </button>
+  </form>
+
+  {% if result %}
+  <div class="space-y-4">
+    <!-- Explanation -->
+    <div class="bg-stone-800 border border-stone-600 p-4">
+      <p class="text-xs text-stone-400 uppercase tracking-wider mb-1">Explanation</p>
+      <p class="text-stone-100 text-sm">{{ result.explanation }}</p>
+    </div>
+
+    <!-- Generated query -->
+    {% if result.query_used %}
+    <div class="bg-stone-800 border border-stone-600 p-4">
+      <p class="text-xs text-stone-400 uppercase tracking-wider mb-2">Generated Query</p>
+      <pre class="text-teal-400 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{{ result.query_used | tojson(indent=2) }}</pre>
+    </div>
+    {% endif %}
+
+    <!-- Results -->
+    <div>
+      <p class="text-xs text-stone-400 uppercase tracking-wider mb-2">
+        Results — {{ result.total_results }} found
+      </p>
+      {% if result.results %}
+      {% set cols = result.results[0].keys() | list %}
+      <table class="w-full text-sm border border-stone-600">
+        <thead>
+          <tr class="bg-stone-800 text-stone-300">
+            {% for col in cols %}
+            <th class="px-4 py-2 text-left font-medium">{{ col }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in result.results %}
+          <tr class="border-t border-stone-600">
+            {% for col in cols %}
+            <td class="px-4 py-2 text-stone-100 max-w-xs truncate">{{ row.get(col, "—") }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-stone-400 text-sm py-2">No results found.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
