@@ -7,9 +7,8 @@
 | Main background | `stone-700` | `#44403c` |
 | Dark background | `stone-800` | `#292524` |
 | Text | `stone-100` | `#f5f5f4` |
-| Accent | `emerald-700` | `#15803d` |
+| Theme/Accent/Info* | `emerald-400` – `emerald-700` | `#34d399`, `#10b981`, `#059669` `#15803d` |
 | Secondary | `olive-900` | `#365314` |
-| Info | `teal-400` | `#2dd4bf` |
 | Warning | `amber-500` | `#f59e0b` |
 | Danger | `red-400` | `#f87171` |
 
@@ -26,3 +25,5 @@
 **Everything visible.** Prefer showing content directly over hiding it behind dropdowns, hamburger menus, or collapsed sections. Use judgment for genuinely complex UIs, but default to open.
 
 **Flat, geometric layouts.** Think Bauhaus — strong grid, clear blocks of color, content-first. Let the structure do the visual work.
+
+**On emeralds:** Emerald shades 400–600 are available for text; use lighter shades for higher-signal elements, darker for supporting information. Emerald-400 is also the 'brand' color.
