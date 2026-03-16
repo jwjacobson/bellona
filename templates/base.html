@@ -36,9 +36,9 @@
 <body class="bg-stone-700 text-stone-100 min-h-screen">
 
   <!-- Nav -->
-  <nav class="bg-stone-800 border-b border-stone-600">
+  <nav class="bg-stone-800 border-b border-olive-900">
     <div class="flex items-stretch">
-      <a href="/ui/ontology" class="px-6 py-4 text-emerald-400 font-bold text-lg tracking-widest uppercase border-r border-stone-600">
+      <a href="/ui/ontology" class="px-6 py-4 text-emerald-400 font-bold text-lg tracking-widest uppercase border-r border-olive-900">
         BELLONA
       </a>
       {% set nav_links = [
@@ -51,8 +51,8 @@
       ] %}
       {% for href, label in nav_links %}
         <a href="{{ href }}"
-           class="px-5 py-4 text-sm font-medium tracking-wide border-r border-stone-600
-                  {% if request.url.path.startswith(href) %}bg-stone-700 text-stone-100{% else %}text-stone-300 hover:text-stone-100 hover:bg-stone-700{% endif %}">
+           class="px-5 py-4 text-sm font-medium tracking-wide border-r border-olive-900
+                  {% if request.url.path.startswith(href) %}bg-olive-900 text-stone-100{% else %}text-stone-300 hover:text-stone-100 hover:bg-stone-700{% endif %}">
           {{ label }}
         </a>
       {% endfor %}
