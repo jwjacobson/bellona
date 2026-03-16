@@ -9,7 +9,7 @@
   <form method="post" action="/ui/query" class="flex gap-2 mb-6">
     <input type="text" name="question" value="{{ question }}" required
            placeholder="Which companies were founded after 2020?"
-           class="flex-1 bg-stone-800 border border-stone-600 text-stone-100 px-4 py-3 text-sm focus:outline-none focus:border-emerald-600">
+           class="flex-1 bg-stone-800 border border-olive-900 text-stone-100 px-4 py-3 text-sm focus:outline-none focus:border-emerald-600">
     <button type="submit"
             class="px-6 py-3 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium border border-emerald-600">
       Query
@@ -19,16 +19,16 @@
   {% if result %}
   <div class="space-y-4">
     <!-- Explanation -->
-    <div class="bg-stone-800 border border-stone-600 p-4">
+    <div class="bg-stone-800 border border-olive-900 p-4">
       <p class="text-xs text-stone-400 uppercase tracking-wider mb-1">Explanation</p>
       <p class="text-stone-100 text-sm">{{ result.explanation }}</p>
     </div>
 
     <!-- Generated query -->
     {% if result.query_used %}
-    <div class="bg-stone-800 border border-stone-600 p-4">
+    <div class="bg-stone-800 border border-olive-900 p-4">
       <p class="text-xs text-stone-400 uppercase tracking-wider mb-2">Generated Query</p>
-      <pre class="text-teal-400 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{{ result.query_used | tojson(indent=2) }}</pre>
+      <pre class="text-emerald-700 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{{ result.query_used | tojson(indent=2) }}</pre>
     </div>
     {% endif %}
 
