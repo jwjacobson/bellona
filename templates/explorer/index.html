@@ -7,11 +7,11 @@
   <!-- Entity type selector -->
   <div class="w-56 shrink-0">
     <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase mb-2">Entity Types</h2>
-    <div class="border border-stone-600">
+    <div class="border border-olive-900">
       {% for et in entity_types %}
       <a href="/ui/explorer/{{ et.id }}"
-         class="block px-4 py-2 text-sm border-b border-stone-600 last:border-b-0
-                {% if selected and selected.id == et.id %}bg-emerald-800 text-stone-100{% else %}text-stone-300 hover:bg-stone-600{% endif %}">
+         class="block px-4 py-2 text-sm border-b border-olive-900 last:border-b-0
+                {% if selected and selected.id == et.id %}bg-emerald-700 text-stone-100{% else %}text-stone-300 hover:bg-stone-600{% endif %}">
         {{ et.name }}
       </a>
       {% else %}
@@ -29,7 +29,7 @@
         <p class="text-stone-400 text-sm">{{ total }} {{ "entity" if total == 1 else "entities" }}</p>
       </div>
       <a href="/ui/ontology/entity-types/{{ selected.id }}"
-         class="px-3 py-2 bg-stone-600 text-stone-100 text-sm border border-stone-500 hover:bg-stone-500">
+         class="px-3 py-2 bg-olive-900 text-stone-100 text-sm border border-olive-900 hover:bg-stone-700">
         Edit Schema →
       </a>
     </div>
@@ -37,7 +37,7 @@
     {% if entities %}
     <!-- Dynamic columns from first entity's properties -->
     {% set cols = entities[0].properties.keys() | list %}
-    <table class="w-full text-sm border border-stone-600">
+    <table class="w-full text-sm border border-olive-900">
       <thead>
         <tr class="bg-stone-800 text-stone-300">
           {% for col in cols %}
@@ -48,7 +48,7 @@
       </thead>
       <tbody>
         {% for entity in entities %}
-        <tr class="border-t border-stone-600 hover:bg-stone-600">
+        <tr class="border-t border-olive-900 hover:bg-stone-600">
           {% for col in cols %}
           <td class="px-4 py-2 text-stone-100 max-w-xs truncate">{{ entity.properties.get(col, "—") }}</td>
           {% endfor %}
@@ -63,18 +63,18 @@
     <div class="flex gap-2 mt-4">
       {% if page > 1 %}
       <a href="/ui/explorer/{{ selected.id }}?page={{ page - 1 }}"
-         class="px-4 py-2 bg-stone-600 text-stone-100 text-sm border border-stone-500 hover:bg-stone-500">← Prev</a>
+         class="px-4 py-2 bg-stone-600 text-stone-100 text-sm border border-olive-900 hover:bg-stone-500">← Prev</a>
       {% endif %}
       <span class="px-4 py-2 text-stone-400 text-sm">Page {{ page }}</span>
       {% if page * page_size < total %}
       <a href="/ui/explorer/{{ selected.id }}?page={{ page + 1 }}"
-         class="px-4 py-2 bg-stone-600 text-stone-100 text-sm border border-stone-500 hover:bg-stone-500">Next →</a>
+         class="px-4 py-2 bg-stone-600 text-stone-100 text-sm border border-olive-900 hover:bg-stone-500">Next →</a>
       {% endif %}
     </div>
     {% endif %}
 
     {% else %}
-    <p class="text-stone-400 text-sm py-4">No entities of this type yet. Ingest data via the <a href="/ui/connectors" class="text-teal-400 hover:text-teal-300">Connectors</a> panel.</p>
+    <p class="text-stone-400 text-sm py-4">No entities of this type yet. Ingest data via the <a href="/ui/connectors" class="text-emerald-500 hover:text-emerald-400">Connectors</a> panel.</p>
     {% endif %}
 
     {% else %}
