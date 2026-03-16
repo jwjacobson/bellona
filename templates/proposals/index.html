@@ -7,13 +7,13 @@
 {% if proposals %}
 <div class="space-y-4">
   {% for proposal in proposals %}
-  <div class="bg-stone-800 border border-stone-600
+  <div class="bg-stone-800 border border-olive-900
               {% if proposal.status == 'confirmed' %}border-l-4 border-l-emerald-600{% elif proposal.status == 'rejected' %}border-l-4 border-l-red-600{% else %}border-l-4 border-l-amber-500{% endif %}">
     <div class="px-5 py-3 flex items-start justify-between gap-4">
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-3 mb-1">
           <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-stone-700
-                       {% if proposal.proposal_type == 'mapping' %}text-teal-400{% else %}text-amber-400{% endif %}">
+                       {% if proposal.proposal_type == 'mapping' %}text-emerald-700{% else %}text-amber-400{% endif %}">
             {{ proposal.proposal_type }}
           </span>
           <span class="text-xs
@@ -33,7 +33,7 @@
             <div class="text-xs font-mono">
               <span class="text-stone-300">{{ m.source_field }}</span>
               <span class="text-stone-500 mx-1">→</span>
-              <span class="text-teal-400">{{ m.target_property }}</span>
+              <span class="text-emerald-700">{{ m.target_property }}</span>
               {% if m.confidence is defined %}
               <span class="text-stone-500 ml-2">({{ "%.0f"|format(m.confidence * 100) }}%)</span>
               {% endif %}
