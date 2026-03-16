@@ -8,13 +8,13 @@
   <div class="flex-1">
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-xl font-bold tracking-wide text-stone-100">Relationship Types</h1>
-      <a href="/ui/ontology" class="px-4 py-2 bg-stone-600 text-stone-100 text-sm font-medium border border-stone-500 hover:bg-stone-500">
+      <a href="/ui/ontology" class="px-4 py-2 bg-olive-900 text-stone-100 text-sm font-medium border border-olive-900 hover:bg-stone-700">
         ← Entity Types
       </a>
     </div>
 
     {% if rel_types %}
-    <table class="w-full text-sm border border-stone-600">
+    <table class="w-full text-sm border border-olive-900">
       <thead>
         <tr class="bg-stone-800 text-stone-300">
           <th class="px-4 py-2 text-left font-medium">Name</th>
@@ -29,7 +29,7 @@
           <td class="px-4 py-2 font-medium text-stone-100">{{ rt.name }}</td>
           <td class="px-4 py-2 text-stone-300">{{ rt.source_entity_type_id }}</td>
           <td class="px-4 py-2 text-stone-300">{{ rt.target_entity_type_id }}</td>
-          <td class="px-4 py-2 text-teal-400">{{ rt.cardinality }}</td>
+          <td class="px-4 py-2 text-emerald-700">{{ rt.cardinality }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -47,12 +47,12 @@
       <div>
         <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Name *</label>
         <input type="text" name="name" required
-               class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+               class="w-full bg-stone-800 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
       </div>
       <div>
         <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Source Entity Type *</label>
         <select name="source_entity_type_id"
-                class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+                class="w-full bg-stone-800 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
           {% for et in entity_types %}
           <option value="{{ et.id }}">{{ et.name }}</option>
           {% endfor %}
@@ -61,7 +61,7 @@
       <div>
         <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Target Entity Type *</label>
         <select name="target_entity_type_id"
-                class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+                class="w-full bg-stone-800 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
           {% for et in entity_types %}
           <option value="{{ et.id }}">{{ et.name }}</option>
           {% endfor %}
@@ -70,7 +70,7 @@
       <div>
         <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Cardinality *</label>
         <select name="cardinality"
-                class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+                class="w-full bg-stone-800 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
           <option value="one-to-one">one-to-one</option>
           <option value="one-to-many">one-to-many</option>
           <option value="many-to-many">many-to-many</option>
