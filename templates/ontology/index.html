@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Ontology — Bellona{% endblock %}
+
+{% block content %}
+<div class="flex gap-6">
+
+  <!-- Entity Types list -->
+  <div class="flex-1">
+    <div class="flex items-center justify-between mb-4">
+      <h1 class="text-xl font-bold tracking-wide text-stone-100">Entity Types</h1>
+      <a href="/ui/ontology/relationships" class="px-4 py-2 bg-olive-900 text-stone-100 text-sm font-medium border border-olive-900 hover:bg-stone-700">
+        Relationship Types →
+      </a>
+    </div>
+
+    {% if entity_types %}
+    <table class="w-full text-sm border border-olive-900">
+      <thead>
+        <tr class="bg-stone-800 text-stone-300">
+          <th class="px-4 py-2 text-left font-medium">Name</th>
+          <th class="px-4 py-2 text-left font-medium">Description</th>
+          <th class="px-4 py-2 text-left font-medium">Version</th>
+          <th class="px-4 py-2 text-left font-medium"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for et in entity_types %}
+        <tr class="border-t border-olive-900 hover:bg-stone-600">
+          <td class="px-4 py-2 font-medium text-stone-100">{{ et.name }}</td>
+          <td class="px-4 py-2 text-stone-300">{{ et.description or "—" }}</td>
+          <td class="px-4 py-2 text-stone-400">v{{ et.schema_version }}</td>
+          <td class="px-4 py-2">
+            <a href="/ui/ontology/entity-types/{{ et.id }}" class="text-emerald-500 hover:text-emerald-400 text-xs">details →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="text-stone-400 text-sm py-4">No entity types defined yet. Create one below.</p>
+    {% endif %}
+  </div>
+
+  <!-- Create Entity Type form -->
+  <div class="w-80 shrink-0">
+    <h2 class="text-base font-bold tracking-wide text-stone-100 mb-3">New Entity Type</h2>
+    <form method="post" action="/ui/ontology/entity-types" class="space-y-3">
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Name *</label>
+        <input type="text" name="name" required
+               class="w-full bg-stone-800 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Description</label>
+        <input type="text" name="description"
+               class="w-full bg-stone-800 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+      </div>
+      <button type="submit"
+              class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-4 border border-emerald-600">
+        Create Entity Type
+      </button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
