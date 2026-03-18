@@ -6,7 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bellona.db.session import get_db
+from bellona.schemas.delete import BulkDeleteRequest, BulkDeleteResult
 from bellona.schemas.query import EntityPage, EntityQuery, EntityRead, RelationshipRead
+from bellona.services.entity import (
+        delete_entity,
+        delete_entities_bulk,
+        delete_entities_by_type,
+        delete_relationship,
+    )
 from bellona.services.query import get_entity, get_entity_relationships, query_entities
 
 logger = structlog.get_logger()
@@ -55,3 +62,37 @@ async def get_entity_relationships_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
     relationships = await get_entity_relationships(db, entity_id)
     return [RelationshipRead.model_validate(r) for r in relationships]
+
+
+@router.delete("/{entity_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_entity_endpoint(
+    entity_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await delete_entity(db, entity_id)
+        await db.commit()
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found"
+        )
+ 
+ 
+@router.post("/bulk-delete", response_model=BulkDeleteResult)
+async def bulk_delete_entities_endpoint(
+    data: BulkDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BulkDeleteResult:
+    count = await delete_entities_bulk(db, data.entity_ids)
+    await db.commit()
+    return BulkDeleteResult(deleted_count=count)
+ 
+ 
+@router.delete("", response_model=BulkDeleteResult)
+async def delete_entities_by_type_endpoint(
+    entity_type_id: uuid.UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+) -> BulkDeleteResult:
+    count = await delete_entities_by_type(db, entity_type_id)
+    await db.commit()
+    return BulkDeleteResult(deleted_count=count)

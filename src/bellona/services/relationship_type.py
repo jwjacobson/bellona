@@ -1,3 +1,4 @@
+import uuid
 import structlog
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -45,3 +46,26 @@ async def create_relationship_type(
 async def list_relationship_types(db: AsyncSession) -> list[RelationshipType]:
     result = await db.execute(select(RelationshipType).order_by(RelationshipType.name))
     return list(result.scalars().all())
+
+async def delete_relationship_type(
+    db: AsyncSession, relationship_type_id: uuid.UUID
+) -> None:
+    """Delete a relationship type. Raises IntegrityError if relationships
+    still reference it (due to RESTRICT foreign key)."""
+    rel_type = await db.get(RelationshipType, relationship_type_id)
+    if rel_type is None:
+        raise ValueError("Relationship type not found")
+ 
+    name = rel_type.name
+    await db.delete(rel_type)
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        raise
+ 
+    logger.info(
+        "relationship type deleted",
+        relationship_type_id=str(relationship_type_id),
+        name=name,
+    )

@@ -1,5 +1,6 @@
+import uuid
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,6 +8,7 @@ from bellona.db.session import get_db
 from bellona.schemas.ontology import RelationshipTypeCreate, RelationshipTypeRead
 from bellona.services.relationship_type import (
     create_relationship_type,
+    delete_relationship_type,
     list_relationship_types,
 )
 
@@ -36,3 +38,28 @@ async def create(data: RelationshipTypeCreate, db: AsyncSession = Depends(get_db
 @router.get("", response_model=list[RelationshipTypeRead])
 async def list_all(db: AsyncSession = Depends(get_db)):
     return await list_relationship_types(db)
+
+
+@router.delete("/{relationship_type_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete(
+    relationship_type_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await delete_relationship_type(db, relationship_type_id)
+        await db.commit()
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Relationship type not found",
+        )
+    except IntegrityError:
+        logger.warning(
+            "cannot delete relationship type: relationships exist",
+            relationship_type_id=str(relationship_type_id),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete relationship type: relationships still exist. "
+            "Delete them first.",
+        )

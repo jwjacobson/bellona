@@ -21,6 +21,7 @@ from bellona.services.ingestion import (
     create_connector,
     create_field_mapping,
     create_ingestion_job,
+    delete_connector,
     get_connector,
     get_ingestion_job,
     list_connectors,
@@ -149,6 +150,21 @@ async def trigger_sync(
     background_tasks.add_task(run_ingestion_job, job.id)
     return job  # type: ignore[return-value]
 
+
+@router.delete(
+    "/connectors/{connector_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_connector_endpoint(
+    connector_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await delete_connector(db, connector_id)
+        await db.commit()
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found"
+        )
 
 # ── Field Mappings ────────────────────────────────────────────────────────────
 

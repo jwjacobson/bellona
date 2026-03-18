@@ -291,3 +291,19 @@ async def run_ingestion_job(job_id: uuid.UUID) -> None:
             await db.rollback()
             logger.error("ingestion background task failed", job_id=str(job_id), exc_info=True)
             raise
+
+
+async def delete_connector(db: AsyncSession, connector_id: uuid.UUID) -> None:
+    """Delete a connector. CASCADE handles ingestion jobs and field mappings.
+    Entity source_connector_id is SET NULL."""
+    connector = await db.get(Connector, connector_id)
+    if connector is None:
+        raise ValueError("Connector not found")
+ 
+    name = connector.name
+    await db.delete(connector)
+    await db.flush()
+ 
+    logger.info(
+        "connector deleted", connector_id=str(connector_id), name=name
+    )
