@@ -25,12 +25,44 @@
       </thead>
       <tbody>
         {% for et in entity_types %}
-        <tr class="border-t border-olive-900 hover:bg-stone-600">
+        <tr id="et-row-{{ et.id }}"
+            x-data="entityTypeRow('{{ et.id }}')"
+            class="border-t border-olive-900 hover:bg-stone-600">
           <td class="px-4 py-2 font-medium text-stone-100">{{ et.name }}</td>
           <td class="px-4 py-2 text-stone-300">{{ et.description or "—" }}</td>
           <td class="px-4 py-2 text-stone-400">v{{ et.schema_version }}</td>
           <td class="px-4 py-2">
-            <a href="/ui/ontology/entity-types/{{ et.id }}" class="text-emerald-500 hover:text-emerald-400 text-xs">details →</a>
+            <div class="flex items-center gap-3 flex-wrap">
+              <a href="/ui/ontology/entity-types/{{ et.id }}" class="text-emerald-500 hover:text-emerald-400 text-xs">details →</a>
+
+              <!-- Delete button -->
+              <button x-show="!showConfirm && !hasDeps && !showCascade"
+                      @click="showConfirm = true"
+                      class="text-red-400 hover:text-red-300 text-xs border border-red-900 px-2 py-0.5 hover:bg-red-950">
+                delete
+              </button>
+
+              <!-- Inline confirm -->
+              <span x-show="showConfirm && !hasDeps" style="display:none" class="flex items-center gap-1 text-xs">
+                <span class="text-stone-300">Sure?</span>
+                <button @click="doDelete()" class="text-red-400 border border-red-800 px-2 py-0.5 hover:bg-red-950">yes</button>
+                <button @click="showConfirm = false" class="text-stone-400 border border-stone-600 px-2 py-0.5 hover:bg-stone-600">no</button>
+              </span>
+
+              <!-- 409: has dependents -->
+              <span x-show="hasDeps && !showCascade" style="display:none" class="flex items-center gap-1 text-xs flex-wrap">
+                <span class="text-red-300">Has dependents —</span>
+                <button @click="showCascade = true" class="text-red-400 border border-red-700 px-2 py-0.5 hover:bg-red-950">Delete Everything</button>
+                <button @click="hasDeps = false; showConfirm = false" class="text-stone-400 border border-stone-600 px-2 py-0.5 hover:bg-stone-600">cancel</button>
+              </span>
+
+              <!-- Cascade confirm -->
+              <span x-show="showCascade" style="display:none" class="text-xs text-stone-300">
+                This will delete all entities, relationships, and relationship types associated with this type.
+                <button @click="doCascade()" class="text-red-400 border border-red-700 px-2 py-0.5 ml-1 hover:bg-red-950">Confirm</button>
+                <button @click="showCascade = false" class="text-stone-400 border border-stone-600 px-2 py-0.5 ml-1 hover:bg-stone-600">cancel</button>
+              </span>
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -63,4 +95,31 @@
   </div>
 
 </div>
+
+<script>
+function entityTypeRow(id) {
+  return {
+    showConfirm: false,
+    hasDeps: false,
+    showCascade: false,
+
+    async doDelete() {
+      const resp = await fetch(`/api/v1/entity-types/${id}`, { method: 'DELETE' });
+      if (resp.status === 204) {
+        document.getElementById(`et-row-${id}`)?.remove();
+      } else if (resp.status === 409) {
+        this.showConfirm = false;
+        this.hasDeps = true;
+      }
+    },
+
+    async doCascade() {
+      const resp = await fetch(`/api/v1/entity-types/${id}/cascade-delete`, { method: 'POST' });
+      if (resp.ok) {
+        document.getElementById(`et-row-${id}`)?.remove();
+      }
+    },
+  };
+}
+</script>
 {% endblock %}

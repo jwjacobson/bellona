@@ -83,7 +83,7 @@
     </div>
   </div>
 
-  <!-- Agent actions sidebar -->
+  <!-- Sidebar -->
   <div class="w-72 shrink-0 space-y-4">
     <div class="bg-stone-800 border border-olive-900 p-4">
       <h3 class="text-sm font-bold text-stone-100 mb-3">Agent Actions</h3>
@@ -109,11 +109,56 @@
         </div>
       </div>
     </div>
+
     <div class="bg-stone-800 border border-olive-900 p-4">
       <h3 class="text-sm font-bold text-stone-100 mb-2">Proposals</h3>
       <a href="/ui/proposals" class="text-emerald-600 hover:text-emerald-500 text-sm">View pending proposals →</a>
     </div>
+
+    <!-- Danger zone -->
+    <div class="bg-stone-800 border border-red-900 p-4" x-data="connectorDelete('{{ connector.id }}')">
+      <h3 class="text-sm font-bold text-red-400 mb-3">Danger Zone</h3>
+
+      <!-- Delete button -->
+      <button x-show="!showConfirm"
+              @click="showConfirm = true"
+              class="w-full text-red-400 text-sm border border-red-800 py-2 px-3 hover:bg-red-950 text-left">
+        Delete Connector
+      </button>
+
+      <!-- Confirm panel -->
+      <div x-show="showConfirm" style="display:none" class="space-y-3">
+        <p class="text-stone-300 text-xs leading-relaxed">
+          This will remove the connector and all its ingestion history. Entities created by this connector will not be deleted.
+        </p>
+        <div class="flex gap-2">
+          <button @click="doDelete()"
+                  class="px-3 py-1 text-red-400 border border-red-700 text-xs hover:bg-red-950">
+            Confirm Delete
+          </button>
+          <button @click="showConfirm = false"
+                  class="px-3 py-1 text-stone-400 border border-stone-600 text-xs hover:bg-stone-600">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
+
+<script>
+function connectorDelete(id) {
+  return {
+    showConfirm: false,
+
+    async doDelete() {
+      const resp = await fetch(`/api/v1/connectors/${id}`, { method: 'DELETE' });
+      if (resp.status === 204 || resp.ok) {
+        window.location.href = '/ui/connectors';
+      }
+    },
+  };
+}
+</script>
 {% endblock %}
