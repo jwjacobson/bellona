@@ -42,7 +42,7 @@ async def create_rest_connector(
     name: str = Form(...),
     type: str = Form("rest_api"),
     base_url: str = Form(...),
-    endpoint: str = Form(...),
+    endpoint: str = Form(""),
     auth_type: str = Form("none"),
     pagination_strategy: str = Form("none"),
     record_path: str = Form("$.data"),

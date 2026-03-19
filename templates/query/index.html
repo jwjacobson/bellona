@@ -28,7 +28,7 @@
     {% if result.query_used %}
     <div class="bg-stone-800 border border-olive-900 p-4">
       <p class="text-xs text-stone-400 uppercase tracking-wider mb-2">Generated Query</p>
-      <pre class="text-emerald-700 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{{ result.query_used | tojson(indent=2) }}</pre>
+      <pre class="text-emerald-500 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{{ result.query_used | tojson(indent=2) }}</pre>
     </div>
     {% endif %}
 

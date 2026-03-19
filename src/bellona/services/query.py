@@ -5,7 +5,7 @@ import math
 import uuid
 
 import structlog
-from sqlalchemy import and_, cast, func, or_, select
+from sqlalchemy import and_, cast, func, literal, or_, select
 from sqlalchemy.exc import DataError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.types import Numeric
@@ -35,13 +35,13 @@ def _filter_condition_to_clause(cond: FilterCondition):
         case "neq":
             return col != str(cond.value) if cond.value is not None else col.isnot(None)
         case "gt":
-            return cast(col, Numeric) > cond.value
+            return cast(col, Numeric) > cast(literal(str(cond.value)), Numeric)
         case "gte":
-            return cast(col, Numeric) >= cond.value
+            return cast(col, Numeric) >= cast(literal(str(cond.value)), Numeric)
         case "lt":
-            return cast(col, Numeric) < cond.value
+            return cast(col, Numeric) < cast(literal(str(cond.value)), Numeric)
         case "lte":
-            return cast(col, Numeric) <= cond.value
+            return cast(col, Numeric) <= cast(literal(str(cond.value)), Numeric)
         case "contains":
             escaped = str(cond.value).replace("%", r"\%").replace("_", r"\_")
             return col.ilike(f"%{escaped}%", escape="\\")
