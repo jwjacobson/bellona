@@ -18,18 +18,93 @@
       </div>
     </div>
 
-    <!-- Config -->
-    <div class="mb-6">
-      <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase mb-2">Configuration</h2>
-      <div class="bg-stone-800 border border-olive-900 p-4">
-        {% for key, value in connector.config.items() %}
-        <div class="flex gap-4 text-sm border-b border-olive-900 py-1 last:border-b-0">
-          <span class="text-stone-400 w-40 shrink-0">{{ key }}</span>
-          <span class="text-stone-100 font-mono text-xs break-all">{{ value }}</span>
-        </div>
-        {% endfor %}
-      </div>
+    <!-- Config section with edit toggle -->
+<div class="mb-6" x-data="{ editing: false }">
+  <div class="flex items-center justify-between mb-2">
+    <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase">Configuration</h2>
+    <button @click="editing = !editing"
+            class="text-xs text-emerald-500 hover:text-emerald-400"
+            x-text="editing ? 'Cancel' : 'Edit'">
+    </button>
+  </div>
+ 
+  <!-- View mode -->
+  <div x-show="!editing" class="bg-stone-800 border border-olive-900 p-4">
+    {% for key, value in connector.config.items() %}
+    <div class="flex gap-4 text-sm border-b border-olive-900 py-1 last:border-b-0">
+      <span class="text-stone-400 w-40 shrink-0">{{ key }}</span>
+      <span class="text-stone-100 font-mono text-xs break-all">{{ value }}</span>
     </div>
+    {% endfor %}
+  </div>
+ 
+  <!-- Edit mode -->
+  <div x-show="editing" style="display:none">
+    <form method="post" action="/ui/connectors/{{ connector.id }}/edit"
+          class="bg-stone-800 border border-olive-900 p-4 space-y-3">
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Name *</label>
+        <input type="text" name="name" value="{{ connector.name }}" required
+               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Base URL *</label>
+        <input type="text" name="base_url" value="{{ connector.config.get('base_url', '') }}" required
+               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Endpoint</label>
+        <input type="text" name="endpoint" value="{{ connector.config.get('endpoint', '') }}"
+               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Auth Type</label>
+        <select name="auth_type"
+                class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+          {% set current_auth = connector.config.get('auth', {}).get('type', connector.config.get('auth_type', 'none')) %}
+          <option value="none" {% if current_auth == 'none' %}selected{% endif %}>None</option>
+          <option value="bearer" {% if current_auth == 'bearer' %}selected{% endif %}>Bearer Token</option>
+          <option value="api_key" {% if current_auth == 'api_key' %}selected{% endif %}>API Key</option>
+          <option value="basic" {% if current_auth == 'basic' %}selected{% endif %}>Basic Auth</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Records JSONPath</label>
+        <input type="text" name="records_jsonpath"
+               value="{{ connector.config.get('records_jsonpath', connector.config.get('record_path', '$.data')) }}"
+               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Pagination Strategy</label>
+        {% set current_pag = connector.config.get('pagination', {}).get('strategy', connector.config.get('pagination_strategy', 'none')) %}
+        <select name="pagination_strategy"
+                class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+          <option value="none" {% if current_pag == 'none' %}selected{% endif %}>None</option>
+          <option value="offset" {% if current_pag == 'offset' %}selected{% endif %}>Offset</option>
+          <option value="cursor" {% if current_pag == 'cursor' %}selected{% endif %}>Cursor</option>
+          <option value="link_header" {% if current_pag == 'link_header' %}selected{% endif %}>Link Header</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Page Size</label>
+        <input type="text" name="page_size"
+               value="{{ connector.config.get('pagination', {}).get('page_size', '') }}"
+               placeholder="e.g. 10"
+               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+      </div>
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Page Param</label>
+        <input type="text" name="page_param"
+               value="{{ connector.config.get('pagination', {}).get('page_param', 'page') }}"
+               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+      </div>
+      <button type="submit"
+              class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-4 border border-emerald-600">
+        Save Configuration
+      </button>
+    </form>
+  </div>
+</div>
 
     <!-- Ingestion Jobs -->
     <div>
@@ -89,6 +164,35 @@
       <h3 class="text-sm font-bold text-stone-100 mb-3">Agent Actions</h3>
       <div class="space-y-4">
         <div class="space-y-2">
+          <form method="post" action="/ui/connectors/{{ connector.id }}/propose-schema">
+            <button type="submit"
+                    class="w-full bg-olive-900 hover:bg-stone-800 text-stone-100 text-sm py-2 px-3 border border-olive-900 text-left">
+              Propose Schema
+            </button>
+          </form>
+          <p class="text-stone-500 text-xs">Have the Schema Agent analyze this connector and suggest entity types.</p>
+        </div>
+        <div class="space-y-2">
+          <form method="post" action="/ui/connectors/{{ connector.id }}/propose-mapping"
+                class="space-y-2">
+            {% if entity_types %}
+            <select name="entity_type_id"
+                    class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+              {% for et in entity_types %}
+              <option value="{{ et.id }}">{{ et.name }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit"
+                    class="w-full bg-olive-900 hover:bg-stone-800 text-stone-100 text-sm py-2 px-3 border border-olive-900 text-left">
+              Propose Mapping
+            </button>
+            {% else %}
+            <p class="text-stone-500 text-xs">No entity types yet. Propose and confirm a schema first.</p>
+            {% endif %}
+          </form>
+          <p class="text-stone-500 text-xs">Have the Mapper Agent map this connector's fields to an entity type.</p>
+        </div>
+        <div class="space-y-2">
           <form method="post" action="/ui/connectors/{{ connector.id }}/sync">
             <button type="submit"
                     class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-3 border border-emerald-600 text-left">
@@ -96,16 +200,6 @@
             </button>
           </form>
           <p class="text-stone-500 text-xs">Fetch and ingest data from this connector into Bellona.</p>
-        </div>
-        <div class="space-y-2">
-          <form method="post" action="/api/v1/schema/propose">
-            <input type="hidden" name="connector_id" value="{{ connector.id }}">
-            <button type="submit"
-                    class="w-full bg-olive-900 hover:bg-stone-800 text-stone-100 text-sm py-2 px-3 border border-olive-900 text-left">
-              Propose Schema
-            </button>
-          </form>
-          <p class="text-stone-500 text-xs">Have the Schema Agent analyze this connector and suggest entity types.</p>
         </div>
       </div>
     </div>
@@ -119,14 +213,12 @@
     <div class="bg-stone-800 border border-red-900 p-4" x-data="connectorDelete('{{ connector.id }}')">
       <h3 class="text-sm font-bold text-red-400 mb-3">Danger Zone</h3>
 
-      <!-- Delete button -->
       <button x-show="!showConfirm"
               @click="showConfirm = true"
               class="w-full text-red-400 text-sm border border-red-800 py-2 px-3 hover:bg-red-950 text-left">
         Delete Connector
       </button>
 
-      <!-- Confirm panel -->
       <div x-show="showConfirm" style="display:none" class="space-y-3">
         <p class="text-stone-300 text-xs leading-relaxed">
           This will remove the connector and all its ingestion history. Entities created by this connector will not be deleted.
