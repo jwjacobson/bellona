@@ -15,10 +15,14 @@ into a structured query against an ontology database.
 
 Rules:
 - Choose the most relevant entity type from the available ontology.
-- Build a filter tree using the filter operators: eq, neq, gt, gte, lt, lte, \
-  contains, in, is_null, not_null.
-- Use nested "and"/"or" groups for compound conditions.
+- Build filters using EXACTLY this schema:
+  - Single condition: {"property": "<name>", "operator": "<op>", "value": "<val>"}
+  - Compound group: {"op": "and"|"or", "conditions": [<filters>]}
+  - Conditions inside a group can be single conditions or nested groups.
+  - Valid operators: eq, neq, gt, gte, lt, lte, contains, in, is_null, not_null.
+  - For is_null and not_null operators, omit the "value" field.
 - Only filter on properties that exist in the chosen entity type.
+- Property names must match EXACTLY — use the names from the ontology, not synonyms.
 - If the question cannot be answered with the available ontology, set entity_type_name \
   and filters to null and explain why.
 - Provide a clear explanation of how you interpreted the question.

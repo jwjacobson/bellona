@@ -302,3 +302,91 @@ async def test_sync_without_mapping_fails_job(
     job_resp = await client.get(f"/api/v1/ingestion-jobs/{job_id}")
     assert job_resp.status_code == 200
     assert job_resp.json()["status"] == "failed"
+
+
+# ── PATCH /connectors/{id} ────────────────────────────────────────────────────
+
+async def test_patch_connector_name(client: AsyncClient) -> None:
+    create_resp = await client.post(
+        "/api/v1/connectors",
+        json={
+            "type": "rest_api",
+            "name": "PatchNameTest",
+            "config": {
+                "base_url": "https://example.com",
+                "endpoint": "/api/data",
+                "records_jsonpath": "$.results",
+                "pagination": {"strategy": "none"},
+            },
+        },
+    )
+    conn = create_resp.json()
+    response = await client.patch(
+        f"/api/v1/connectors/{conn['id']}",
+        json={"name": "PatchedName"},
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "PatchedName"
+ 
+ 
+async def test_patch_connector_config(client: AsyncClient) -> None:
+    create_resp = await client.post(
+        "/api/v1/connectors",
+        json={
+            "type": "rest_api",
+            "name": "PatchConfigTest",
+            "config": {
+                "base_url": "https://example.com",
+                "endpoint": "/api/data",
+                "records_jsonpath": "$.results",
+                "pagination": {"strategy": "none"},
+            },
+        },
+    )
+    conn = create_resp.json()
+    new_config = {
+        "base_url": "https://new.example.com",
+        "endpoint": "/api/v2/data",
+        "records_jsonpath": "$.items",
+        "pagination": {"strategy": "offset", "page_size": 20, "page_param": "p"},
+    }
+    response = await client.patch(
+        f"/api/v1/connectors/{conn['id']}",
+        json={"config": new_config},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["config"]["base_url"] == "https://new.example.com"
+    assert data["config"]["pagination"]["page_size"] == 20
+ 
+ 
+async def test_patch_connector_not_found(client: AsyncClient) -> None:
+    response = await client.patch(
+        f"/api/v1/connectors/{uuid.uuid4()}",
+        json={"name": "Ghost"},
+    )
+    assert response.status_code == 404
+ 
+ 
+async def test_patch_connector_no_changes(client: AsyncClient) -> None:
+    create_resp = await client.post(
+        "/api/v1/connectors",
+        json={
+            "type": "rest_api",
+            "name": "PatchNoOp",
+            "config": {
+                "base_url": "https://example.com",
+                "endpoint": "/data",
+                "records_jsonpath": "$.data",
+                "pagination": {"strategy": "none"},
+            },
+        },
+    )
+    conn = create_resp.json()
+    response = await client.patch(
+        f"/api/v1/connectors/{conn['id']}",
+        json={},
+    )
+    assert response.status_code == 200
+    assert response.json()["name"] == "PatchNoOp"
+ 

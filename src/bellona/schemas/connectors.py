@@ -59,6 +59,10 @@ class ConnectorRead(BaseModel):
     last_sync_at: datetime | None
 
 
+class ConnectorPatch(BaseModel):
+    name: str | None = None
+    config: dict[str, Any] | None = None
+
 # ── Ingestion Job ─────────────────────────────────────────────────────────────
 
 

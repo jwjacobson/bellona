@@ -21,12 +21,14 @@
   </div>
 
   <!-- Main panel -->
-  <div class="flex-1">
+  <div class="flex-1" x-data="explorerPanel()">
     {% if selected %}
     <div class="flex items-center justify-between mb-4">
       <div>
         <h1 class="text-xl font-bold tracking-wide text-stone-100">{{ selected.name }}</h1>
-        <p class="text-stone-400 text-sm">{{ total }} {{ "entity" if total == 1 else "entities" }}</p>
+        <p class="text-stone-400 text-sm">
+          <span x-text="entityCount + (entityCount === 1 ? ' entity' : ' entities')">{{ total }} {{ "entity" if total == 1 else "entities" }}</span>
+        </p>
       </div>
       <a href="/ui/ontology/entity-types/{{ selected.id }}"
          class="px-3 py-2 bg-olive-900 text-stone-100 text-sm border border-olive-900 hover:bg-stone-700">
@@ -34,25 +36,56 @@
       </a>
     </div>
 
+    <!-- Bulk-delete bar -->
+    <div x-show="selected.length > 0" style="display:none"
+         class="flex items-center gap-4 mb-3 px-4 py-2 bg-stone-800 border border-red-900">
+      <span class="text-sm text-stone-300" x-text="selected.length + ' selected'"></span>
+      <button @click="deleteSelected()"
+              class="px-3 py-1 text-sm text-red-400 border border-red-700 hover:bg-red-950">
+        Delete Selected
+      </button>
+      <button @click="clearSelection()"
+              class="px-3 py-1 text-sm text-stone-400 border border-stone-600 hover:bg-stone-600">
+        Cancel
+      </button>
+      <span x-show="deleteError" x-text="deleteError" class="text-red-400 text-sm"></span>
+    </div>
+
     {% if entities %}
     <!-- Dynamic columns from first entity's properties -->
     {% set cols = entities[0].properties.keys() | list %}
-    <table class="w-full text-sm border border-olive-900">
+    <table id="entity-table" class="w-full text-sm border border-olive-900">
       <thead>
         <tr class="bg-stone-800 text-stone-300">
+          <th class="px-3 py-2 w-8">
+            <input type="checkbox" @change="toggleAll($event.target.checked)"
+                   class="bg-stone-700 border border-stone-500 cursor-pointer">
+          </th>
           {% for col in cols %}
           <th class="px-4 py-2 text-left font-medium">{{ col }}</th>
           {% endfor %}
           <th class="px-4 py-2 text-left font-medium">ID</th>
+          <th class="px-3 py-2 w-8"></th>
         </tr>
       </thead>
       <tbody>
         {% for entity in entities %}
-        <tr class="border-t border-olive-900 hover:bg-stone-600">
+        <tr id="row-{{ entity.id }}" class="border-t border-olive-900 hover:bg-stone-600">
+          <td class="px-3 py-2">
+            <input type="checkbox" value="{{ entity.id }}" x-model="selected"
+                   class="bg-stone-700 border border-stone-500 cursor-pointer">
+          </td>
           {% for col in cols %}
           <td class="px-4 py-2 text-stone-100 max-w-xs truncate">{{ entity.properties.get(col, "—") }}</td>
           {% endfor %}
           <td class="px-4 py-2 text-stone-500 text-xs font-mono">{{ entity.id }}</td>
+          <td class="px-3 py-2">
+            <button @click="deleteOne('{{ entity.id }}')"
+                    title="Delete entity"
+                    class="text-stone-600 hover:text-red-400 text-base leading-none transition-colors">
+              ✕
+            </button>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -84,4 +117,56 @@
   </div>
 
 </div>
+
+<script>
+function explorerPanel() {
+  return {
+    selected: [],
+    deleteError: null,
+    entityCount: {{ total | default(0) }},
+
+    toggleAll(checked) {
+      if (checked) {
+        this.selected = Array.from(
+          document.querySelectorAll('#entity-table tbody input[type=checkbox]')
+        ).map(cb => cb.value);
+      } else {
+        this.selected = [];
+      }
+    },
+
+    clearSelection() {
+      this.selected = [];
+    },
+
+    async deleteOne(id) {
+      const resp = await fetch(`/api/v1/entities/${id}`, { method: 'DELETE' });
+      if (resp.status === 204 || resp.ok) {
+        document.getElementById(`row-${id}`)?.remove();
+        this.entityCount = Math.max(0, this.entityCount - 1);
+        this.selected = this.selected.filter(s => s !== id);
+      }
+    },
+
+    async deleteSelected() {
+      this.deleteError = null;
+      const ids = [...this.selected];
+      const resp = await fetch('/api/v1/entities/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity_ids: ids }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        ids.forEach(id => document.getElementById(`row-${id}`)?.remove());
+        this.entityCount = Math.max(0, this.entityCount - data.deleted_count);
+        this.selected = [];
+      } else {
+        const data = await resp.json().catch(() => ({}));
+        this.deleteError = data.detail || 'Delete failed';
+      }
+    },
+  };
+}
+</script>
 {% endblock %}

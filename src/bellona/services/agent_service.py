@@ -330,6 +330,37 @@ async def check_quality(
         raise ProposalError(f"Quality agent failed: {exc}") from exc
 
 
+def _normalize_filters(raw: dict[str, Any]) -> dict[str, Any]:
+    """Normalize agent filter output to match our Pydantic schemas.
+
+    Handles common agent mistakes like using 'field' instead of 'property',
+    'and'/'or' as keys instead of 'op' with 'conditions', etc.
+    """
+    # Handle {"and": [...]} or {"or": [...]} → {"op": "and", "conditions": [...]}
+    for logical_op in ("and", "or"):
+        if logical_op in raw and isinstance(raw[logical_op], list):
+            return {
+                "op": logical_op,
+                "conditions": [_normalize_filters(c) for c in raw[logical_op]],
+            }
+
+    # Handle {"field": x, ...} → {"property": x, ...}
+    if "field" in raw and "property" not in raw:
+        raw["property"] = raw.pop("field")
+
+    # Handle {"neq": val} or {"eq": val} style → {"operator": "neq", "value": val}
+    if "operator" not in raw:
+        for op in ("eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"):
+            if op in raw:
+                raw = {**raw, "operator": op, "value": raw.pop(op)}
+                break
+
+    # Recurse into conditions if present
+    if "conditions" in raw and isinstance(raw["conditions"], list):
+        raw = {**raw, "conditions": [_normalize_filters(c) for c in raw["conditions"]]}
+
+    return raw
+
 async def run_nl_query(
     db: AsyncSession,
     question: str,
@@ -376,10 +407,10 @@ async def run_nl_query(
                 f"which does not exist in the ontology"
             )
 
-    # Build EntityQuery from agent result
+    # Build filters from agent result, with normalization for common agent mistakes
     filters = None
     if agent_result.filters is not None:
-        raw = agent_result.filters
+        raw = _normalize_filters(agent_result.filters)
         try:
             filters = FilterGroup.model_validate(raw)
         except ValidationError:
@@ -420,3 +451,5 @@ async def run_nl_query(
         results=[item.model_dump(mode="json") for item in page.items],
         total_results=page.total,
     )
+
+

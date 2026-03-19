@@ -17,6 +17,7 @@ from bellona.models.entities import Entity
 from bellona.models.ontology import EntityType
 from bellona.models.system import Connector, FieldMapping, IngestionJob
 from bellona.ontology.validator import validate_record
+from bellona.schemas.connectors import ConnectorPatch
 from bellona.schemas.ontology import PropertyDefinitionCreate
 
 logger = structlog.get_logger()
@@ -291,3 +292,36 @@ async def run_ingestion_job(job_id: uuid.UUID) -> None:
             await db.rollback()
             logger.error("ingestion background task failed", job_id=str(job_id), exc_info=True)
             raise
+
+
+async def delete_connector(db: AsyncSession, connector_id: uuid.UUID) -> None:
+    """Delete a connector. CASCADE handles ingestion jobs and field mappings.
+    Entity source_connector_id is SET NULL."""
+    connector = await db.get(Connector, connector_id)
+    if connector is None:
+        raise ValueError("Connector not found")
+ 
+    name = connector.name
+    await db.delete(connector)
+    await db.flush()
+ 
+    logger.info(
+        "connector deleted", connector_id=str(connector_id), name=name
+    )
+
+
+     
+async def patch_connector(
+    db: AsyncSession, connector: Connector, data: ConnectorPatch
+) -> Connector:
+    if data.name is not None:
+        connector.name = data.name
+    if data.config is not None:
+        connector.config = data.config
+    await db.flush()
+    logger.info(
+        "connector patched",
+        connector_id=str(connector.id),
+        name=connector.name,
+    )
+    return connector

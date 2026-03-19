@@ -24,6 +24,8 @@ async def test_proposals_index(client: AsyncClient) -> None:
     response = await client.get("/ui/proposals")
     assert response.status_code == 200
     assert "Proposals" in response.text
+    assert "Propose Mapping" in response.text
+    assert "Ingestion Flow" in response.text
 
 
 async def test_confirm_proposal_redirects(
@@ -127,3 +129,79 @@ async def test_reject_proposal_redirects(
     )
     assert response.status_code == 303
     assert response.headers["location"] == "/ui/proposals"
+
+
+async def test_proposals_propose_mapping_redirects(client: AsyncClient) -> None:
+    conn_resp = await client.post(
+        "/api/v1/connectors",
+        json={
+            "type": "rest_api",
+            "name": "ProposalsMappingTest",
+            "config": {
+                "base_url": "https://example.com",
+                "endpoint": "/data",
+                "records_jsonpath": "$.data",
+                "pagination": {"strategy": "none"},
+            },
+        },
+    )
+    conn = conn_resp.json()
+    et_resp = await client.post(
+        "/api/v1/entity-types",
+        json={"name": "ProposalsMappingET", "properties": [{"name": "name", "data_type": "string"}]},
+    )
+    et = et_resp.json()
+
+
+    with patch("bellona.api.ui.proposals.propose_mapping") as mock_propose:
+        mock_propose.return_value = AsyncMock()
+        response = await client.post(
+            "/ui/proposals/propose-mapping",
+            data={
+                "connector_id": conn["id"],
+                "entity_type_id": et["id"],
+            },
+            follow_redirects=False,
+        )
+ 
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ui/proposals"
+
+
+async def test_proposals_propose_mapping_shows_error_on_failure(
+    client: AsyncClient,
+) -> None:
+    from bellona.services.agent_service import ProposalError
+ 
+    conn_resp = await client.post(
+        "/api/v1/connectors",
+        json={
+            "type": "rest_api",
+            "name": "ProposalsFailTest",
+            "config": {
+                "base_url": "https://example.com",
+                "endpoint": "/data",
+                "records_jsonpath": "$.data",
+                "pagination": {"strategy": "none"},
+            },
+        },
+    )
+    conn = conn_resp.json()
+    et_resp = await client.post(
+        "/api/v1/entity-types",
+        json={"name": "ProposalsFailET", "properties": [{"name": "x", "data_type": "string"}]},
+    )
+    et = et_resp.json()
+ 
+    with patch("bellona.api.ui.proposals.propose_mapping") as mock_propose:
+        mock_propose.side_effect = ProposalError("Mapper agent failed: test error")
+        response = await client.post(
+            "/ui/proposals/propose-mapping",
+            data={
+                "connector_id": conn["id"],
+                "entity_type_id": et["id"],
+            },
+        )
+ 
+    assert response.status_code == 422
+    assert "Mapper agent failed" in response.text
