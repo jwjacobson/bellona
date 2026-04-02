@@ -22,7 +22,7 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-3 mb-1">
               <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-stone-700
-                           {% if proposal.proposal_type == 'mapping' %}text-emerald-700{% else %}text-amber-400{% endif %}">
+                           {% if proposal.proposal_type == 'mapping' %}text-emerald-700{% elif proposal.proposal_type == 'discovery' %}text-sky-400{% else %}text-amber-400{% endif %}">
                 {{ proposal.proposal_type }}
               </span>
               <span class="text-xs
@@ -41,7 +41,103 @@
             </p>
             {% endif %}
 
-            {% if proposal.proposal_type == 'mapping' and proposal.content.get('mappings') %}
+            <!-- ── Discovery proposal ── -->
+            {% if proposal.proposal_type == 'discovery' %}
+            <div class="mt-2">
+              <p class="text-sm text-stone-100 font-medium">{{ proposal.content.get('base_url', '—') }}</p>
+
+              {% if proposal.content.get('auth') %}
+              <p class="text-xs text-stone-400 mt-1">
+                Auth:
+                {% if proposal.content['auth'].get('auth_required') %}
+                <span class="text-amber-400">required ({{ proposal.content['auth'].get('auth_type', 'unknown') }})</span>
+                {% else %}
+                <span class="text-emerald-400">none required</span>
+                {% endif %}
+              </p>
+              {% endif %}
+
+              {% if proposal.content.get('resources') %}
+              <p class="text-xs text-stone-400 mt-2 mb-1">Discovered {{ proposal.content['resources'] | length }} resource{{ 's' if proposal.content['resources'] | length != 1 }}:</p>
+
+              {% if proposal.status == 'proposed' %}
+              <form method="post" action="/ui/proposals/{{ proposal.id }}/confirm" x-data="{ all: true }">
+                <div class="space-y-2 mb-3">
+                  {% for resource in proposal.content['resources'] %}
+                  <label class="flex items-start gap-2 cursor-pointer group">
+                    <input type="checkbox" name="resources" value="{{ loop.index0 }}"
+                           checked x-bind:checked="all"
+                           class="mt-0.5 accent-emerald-600">
+                    <div>
+                      <span class="text-sm font-mono text-stone-200 group-hover:text-stone-100">{{ resource.get('resource_name', '—') }}</span>
+                      <span class="text-xs text-stone-500 ml-2">{{ resource.get('endpoint_path', '') }}</span>
+                      <div class="text-xs text-stone-500">
+                        {% if resource.get('pagination') %}
+                        <span>pagination: {{ resource['pagination'].get('strategy', 'none') }}</span>
+                        {% endif %}
+                        {% if resource.get('records_jsonpath') %}
+                        <span class="ml-2">records: <span class="font-mono">{{ resource['records_jsonpath'] }}</span></span>
+                        {% endif %}
+                        {% if resource.get('estimated_count') %}
+                        <span class="ml-2">~{{ resource['estimated_count'] }} records</span>
+                        {% endif %}
+                      </div>
+                      {% if resource.get('fields') %}
+                      <div class="mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+                        {% for field in resource['fields'][:10] %}
+                        <span class="text-xs font-mono text-stone-500">{{ field.get('name', '') }}<span class="text-stone-600">:{{ field.get('type', '?') }}</span></span>
+                        {% endfor %}
+                        {% if resource['fields'] | length > 10 %}
+                        <span class="text-xs text-stone-600">+{{ resource['fields'] | length - 10 }} more</span>
+                        {% endif %}
+                      </div>
+                      {% endif %}
+                    </div>
+                  </label>
+                  {% endfor %}
+                </div>
+                <div class="flex gap-2">
+                  <button type="button" @click="all = !all" class="text-xs text-stone-500 hover:text-stone-300 mr-2">
+                    <span x-text="all ? 'Deselect all' : 'Select all'"></span>
+                  </button>
+                  <button type="submit"
+                          class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium border border-emerald-600">
+                    Confirm Selected
+                  </button>
+                  <form method="post" action="/ui/proposals/{{ proposal.id }}/reject">
+                    <button type="submit"
+                            class="px-3 py-1.5 bg-stone-700 hover:bg-stone-600 text-red-400 text-xs font-medium border border-stone-500">
+                      Reject
+                    </button>
+                  </form>
+                </div>
+              </form>
+
+              {% else %}
+              <!-- Already confirmed/rejected: just show resources -->
+              <div class="space-y-2">
+                {% for resource in proposal.content['resources'] %}
+                <div>
+                  <span class="text-sm font-mono text-stone-300">{{ resource.get('resource_name', '—') }}</span>
+                  <span class="text-xs text-stone-500 ml-2">{{ resource.get('endpoint_path', '') }}</span>
+                  <div class="text-xs text-stone-500">
+                    {% if resource.get('pagination') %}
+                    <span>pagination: {{ resource['pagination'].get('strategy', 'none') }}</span>
+                    {% endif %}
+                    {% if resource.get('records_jsonpath') %}
+                    <span class="ml-2">records: <span class="font-mono">{{ resource['records_jsonpath'] }}</span></span>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+              {% endif %}
+            </div>
+
+            <!-- ── Mapping proposal ── -->
+            {% elif proposal.proposal_type == 'mapping' and proposal.content.get('mappings') %}
             <div class="mt-2">
               <p class="text-xs text-stone-400 mb-1">Field mappings:</p>
               <div class="space-y-1">
@@ -61,6 +157,7 @@
               </div>
             </div>
 
+            <!-- ── Entity type proposal ── -->
             {% elif proposal.proposal_type == 'entity_type' %}
             <div class="mt-2">
               <p class="text-sm text-stone-100 font-medium">{{ proposal.content.get('entity_type_name', '—') }}</p>
@@ -89,7 +186,8 @@
             {% endif %}
           </div>
 
-          {% if proposal.status == 'proposed' %}
+          <!-- Confirm/Reject buttons for non-discovery proposals -->
+          {% if proposal.status == 'proposed' and proposal.proposal_type != 'discovery' %}
           <div class="flex gap-2 shrink-0">
             <form method="post" action="/ui/proposals/{{ proposal.id }}/confirm">
               <button type="submit"
@@ -161,10 +259,11 @@
     <div class="mt-6 border border-stone-600 p-4">
       <h3 class="text-xs font-bold text-stone-300 uppercase tracking-wider mb-2">Ingestion Flow</h3>
       <ol class="text-xs text-stone-400 space-y-1">
-        <li>1. Create a connector</li>
-        <li>2. Propose Schema → confirm</li>
-        <li>3. Propose Mapping → confirm</li>
-        <li>4. Trigger Sync on the connector</li>
+        <li>1. Discover API or create connector</li>
+        <li>2. Confirm discovery → auto-proposes schemas</li>
+        <li>3. Confirm schema → creates entity type</li>
+        <li>4. Propose mapping → confirm</li>
+        <li>5. Trigger sync on the connector</li>
       </ol>
     </div>
   </div>

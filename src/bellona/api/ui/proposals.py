@@ -13,6 +13,7 @@ from bellona.models.ontology import EntityType
 from bellona.models.system import AgentProposal, Connector
 from bellona.services.agent_service import (
     ProposalError,
+    confirm_discovery_proposal,
     confirm_mapping_proposal,
     confirm_schema_proposal,
     list_proposals,
@@ -64,6 +65,12 @@ async def confirm(
             await confirm_mapping_proposal(db, proposal_id)
         elif proposal.proposal_type == "entity_type":
             await confirm_schema_proposal(db, proposal_id)
+        elif proposal.proposal_type == "discovery":
+            form = await request.form()
+            selected = [int(v) for v in form.getlist("resources")]
+            await confirm_discovery_proposal(
+                db, proposal_id, selected_resources=selected or None
+            )
         await db.commit()
     except ProposalError as exc:
         ctx = await _proposal_context(db)

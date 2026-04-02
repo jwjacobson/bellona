@@ -1,6 +1,7 @@
 """Agent service layer: orchestrates agent calls and persists proposals."""
 import uuid
 from typing import Any
+from urllib.parse import urlparse
 
 import structlog
 from pydantic import ValidationError
@@ -514,12 +515,20 @@ async def confirm_discovery_proposal(
             raise ProposalError(f"Resource index {idx} out of range")
         resource = content.resources[idx]
 
+        base_parsed = urlparse(content.base_url)
+
+        endpoint = resource.endpoint_path
+        if endpoint.startswith(base_parsed.path) and base_parsed.path != "/":
+            endpoint = endpoint[len(base_parsed.path):]
+            if not endpoint.startswith("/"):
+                endpoint = "/" + endpoint
+
         connector = Connector(
             type="rest_api",
             name=f"{resource.resource_name} ({content.base_url})",
             config={
                 "base_url": content.base_url,
-                "endpoint": resource.endpoint_path,
+                "endpoint": endpoint,
                 "auth": content.auth.model_dump() if content.auth.auth_required else {"type": "none"},
                 "records_jsonpath": resource.records_jsonpath,
                 "pagination": resource.pagination.model_dump(exclude_none=True),

@@ -83,6 +83,23 @@ async def upload_csv_connector(
     return RedirectResponse(url=f"/ui/connectors/{connector.id}", status_code=303)
 
 
+@router.post("/discover")
+async def discover_api_ui(
+    request: Request,
+    base_url: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    from bellona.services.agent_service import discover_api
+
+    try:
+        proposal = await discover_api(db, base_url)
+        await db.commit()
+    except ProposalError as exc:
+        logger.warning("discovery failed", base_url=base_url, error=str(exc))
+        return RedirectResponse(url="/ui/connectors", status_code=303)
+    return RedirectResponse(url=f"/ui/proposals/{proposal.id}", status_code=303)
+
+
 @router.get("/{connector_id}")
 async def connector_detail(
     request: Request,
