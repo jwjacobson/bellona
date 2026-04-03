@@ -115,7 +115,7 @@ def _infer_type(value: Any) -> str:
     return "string"
 
 
-async def detect_pagination(response_json: str, url: str) -> str:
+async def detect_pagination(response_json: str, url: str, record_count: int | None = None) -> str:
     """Analyze an API response for pagination signals."""
     try:
         data = json.loads(response_json) if isinstance(response_json, str) else response_json
@@ -166,6 +166,9 @@ async def detect_pagination(response_json: str, url: str) -> str:
         elif signals.get("has_next_field") or signals.get("has_count_field"):
             strategy = "offset"
             confidence = "high"
+            # Infer page size from record count
+            if record_count and record_count > 0:
+                signals["page_size"] = record_count
             # Try to detect page param from next_url
             next_url = signals.get("next_url", "")
             if isinstance(next_url, str) and next_url:

@@ -523,6 +523,10 @@ async def confirm_discovery_proposal(
             if not endpoint.startswith("/"):
                 endpoint = "/" + endpoint
 
+        pagination = resource.pagination.model_dump(exclude_none=True)
+        if pagination.get("strategy") == "offset" and "page_size" not in pagination:
+            pagination["page_size"] = 10
+
         connector = Connector(
             type="rest_api",
             name=f"{resource.resource_name} ({content.base_url})",
@@ -531,13 +535,13 @@ async def confirm_discovery_proposal(
                 "endpoint": endpoint,
                 "auth": content.auth.model_dump() if content.auth.auth_required else {"type": "none"},
                 "records_jsonpath": resource.records_jsonpath,
-                "pagination": resource.pagination.model_dump(exclude_none=True),
+                "pagination": pagination,
             },
             status="active",
         )
+       
         db.add(connector)
         connectors.append(connector)
-
     proposal.status = "confirmed"
     await db.flush()
 
