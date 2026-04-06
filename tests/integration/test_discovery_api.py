@@ -96,7 +96,7 @@ async def test_confirm_discovery_endpoint(client: AsyncClient, db_session: Async
     assert len(connectors) == 2
     assert connectors[0]["type"] == "rest_api"
     assert connectors[0]["name"] == "people (https://swapi.dev/api/)"
-    assert connectors[0]["config"]["endpoint"] == "/api/people/"
+    assert connectors[0]["config"]["endpoint"] == "/people/"
 
 
 async def test_confirm_with_selection(client: AsyncClient, db_session: AsyncSession) -> None:

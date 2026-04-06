@@ -1,0 +1,10 @@
+{% if error %}
+<div class="mt-3 px-3 py-2 border border-red-800 bg-stone-800 text-red-300 text-sm">
+    Discovery failed: {{ error }}
+</div>
+{% else %}
+<div class="mt-3 px-3 py-2 border border-emerald-800 bg-stone-800 text-sm">
+    <span class="text-emerald-400">Discovery complete.</span>
+    <a href="/ui/proposals" class="text-emerald-500 hover:text-emerald-400 ml-2">View proposal →</a>
+</div>
+{% endif %}

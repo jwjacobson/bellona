@@ -91,7 +91,7 @@ async def test_confirm_discovery_creates_connectors(db_session: AsyncSession) ->
     assert connectors[0].type == "rest_api"
     assert connectors[0].name == "people (https://swapi.dev/api/)"
     assert connectors[0].config["base_url"] == "https://swapi.dev/api/"
-    assert connectors[0].config["endpoint"] == "/api/people/"
+    assert connectors[0].config["endpoint"] == "/people/"
     assert connectors[0].config["records_jsonpath"] == "$.results"
     assert connectors[0].config["pagination"]["strategy"] == "offset"
 
