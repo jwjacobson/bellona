@@ -8,17 +8,21 @@ from bellona.db.session import get_db
 from bellona.models.system import AgentProposal
 from bellona.schemas.agents import (
     AgentProposalRead,
+    ConfirmDiscoveryRequest,
+    DiscoveryRequest,
     MappingProposeRequest,
     QualityReport,
     SchemaProposeRequest,
 )
-from bellona.schemas.connectors import FieldMappingRead
+from bellona.schemas.connectors import ConnectorRead, FieldMappingRead
 from bellona.schemas.ontology import EntityTypeRead
 from bellona.services.agent_service import (
     ProposalError,
     check_quality,
+    confirm_discovery_proposal,
     confirm_mapping_proposal,
     confirm_schema_proposal,
+    discover_api,
     list_proposals,
     propose_mapping,
     propose_schema,
@@ -78,6 +82,47 @@ async def propose_schema_endpoint(
     return proposal  # type: ignore[return-value]
 
 
+# ── Discovery Agent ───────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/discovery/discover",
+    response_model=AgentProposalRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def discover_api_endpoint(
+    data: DiscoveryRequest,
+    db: AsyncSession = Depends(get_db),
+) -> AgentProposalRead:
+    try:
+        proposal = await discover_api(db, data.base_url, data.auth_config)
+    except ProposalError as exc:
+        raise _unprocessable(str(exc))
+    await db.commit()
+    return proposal  # type: ignore[return-value]
+
+
+@router.post(
+    "/discovery/{proposal_id}/confirm",
+    response_model=list[ConnectorRead],
+)
+async def confirm_discovery_endpoint(
+    proposal_id: uuid.UUID,
+    data: ConfirmDiscoveryRequest | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> list[ConnectorRead]:
+    selected = data.selected_resources if data else None
+    try:
+        connectors = await confirm_discovery_proposal(db, proposal_id, selected)
+    except ProposalError as exc:
+        msg = str(exc)
+        if "not found" in msg:
+            raise _not_found(msg)
+        raise _unprocessable(msg)
+    await db.commit()
+    return [ConnectorRead.model_validate(c) for c in connectors]
+
+
 # ── Generic Proposal Actions ──────────────────────────────────────────────────
 
 
@@ -99,6 +144,10 @@ async def confirm_proposal_endpoint(
             result = await confirm_schema_proposal(db, proposal_id)
             await db.commit()
             return EntityTypeRead.model_validate(result)
+        elif proposal.proposal_type == "discovery":
+            connectors = await confirm_discovery_proposal(db, proposal_id)
+            await db.commit()
+            return [ConnectorRead.model_validate(c) for c in connectors]
         else:
             raise ProposalError(f"Unknown proposal type: {proposal.proposal_type}")
     except ProposalError as exc:

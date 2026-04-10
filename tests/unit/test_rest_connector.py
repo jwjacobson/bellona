@@ -109,6 +109,74 @@ async def test_discover_schema_empty_response() -> None:
     assert schema.fields == []
 
 
+# ── discover_schema() — offset multi-page ───────────────────────────────────
+
+
+async def test_discover_schema_offset_fetches_multiple_pages() -> None:
+    config = {
+        **BASE_CONFIG,
+        "pagination": {
+            "strategy": "offset",
+            "page_size": 2,
+            "page_param": "page",
+            "size_param": "per_page",
+        },
+    }
+    client = make_mock_client(
+        make_response({"data": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}),  # page 1 (full)
+        make_response({"data": [{"id": 3, "email": "c@x.com"}]}),  # page 2 (short → stop)
+    )
+    connector = RESTConnector(uuid.uuid4(), config, "test", _client=client)
+    schema = await connector.discover_schema()
+    # Should have fields from both pages
+    names = {f.name for f in schema.fields}
+    assert names == {"id", "name", "email"}
+    # Should have made 2 requests
+    assert client.get.call_count == 2
+
+
+async def test_discover_schema_offset_stops_on_short_page() -> None:
+    config = {
+        **BASE_CONFIG,
+        "pagination": {
+            "strategy": "offset",
+            "page_size": 3,
+            "page_param": "page",
+            "size_param": "per_page",
+        },
+    }
+    client = make_mock_client(
+        make_response({"data": [{"id": 1}, {"id": 2}, {"id": 3}]}),  # full page
+        make_response({"data": [{"id": 4}]}),  # short page → stop
+        make_response({"data": [{"id": 5}]}),  # should NOT be fetched
+    )
+    connector = RESTConnector(uuid.uuid4(), config, "test", _client=client)
+    schema = await connector.discover_schema()
+    # Only 2 requests, not 3
+    assert client.get.call_count == 2
+
+
+async def test_discover_schema_offset_caps_at_3_pages() -> None:
+    config = {
+        **BASE_CONFIG,
+        "pagination": {
+            "strategy": "offset",
+            "page_size": 2,
+            "page_param": "page",
+            "size_param": "per_page",
+        },
+    }
+    client = make_mock_client(
+        make_response({"data": [{"id": 1}, {"id": 2}]}),  # page 1
+        make_response({"data": [{"id": 3}, {"id": 4}]}),  # page 2
+        make_response({"data": [{"id": 5}, {"id": 6}]}),  # page 3
+        make_response({"data": [{"id": 7}, {"id": 8}]}),  # page 4 — should NOT be fetched
+    )
+    connector = RESTConnector(uuid.uuid4(), config, "test", _client=client)
+    schema = await connector.discover_schema()
+    assert client.get.call_count == 3
+
+
 # ── fetch_records() — no pagination ─────────────────────────────────────────
 
 

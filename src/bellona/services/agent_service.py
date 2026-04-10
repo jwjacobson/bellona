@@ -1,6 +1,7 @@
 """Agent service layer: orchestrates agent calls and persists proposals."""
 import uuid
 from typing import Any
+from urllib.parse import urlparse
 
 import structlog
 from pydantic import ValidationError
@@ -8,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from bellona.agents.discovery_agent import DiscoveryAgent
 from bellona.agents.mapper_agent import MapperAgent
 from bellona.agents.quality_agent import QualityAgent
 from bellona.agents.query_agent import QueryAgent
@@ -17,6 +19,7 @@ from bellona.models.entities import Entity
 from bellona.models.ontology import EntityType
 from bellona.models.system import AgentProposal, Connector, FieldMapping
 from bellona.schemas.agents import (
+    DiscoveryProposalContent,
     EntityTypeProposalContent,
     MappingProposalContent,
     NaturalLanguageQueryResponse,
@@ -453,3 +456,108 @@ async def run_nl_query(
     )
 
 
+async def discover_api(
+    db: AsyncSession,
+    base_url: str,
+    auth_config: dict[str, Any] | None = None,
+    *,
+    _mock_result: DiscoveryProposalContent | None = None,
+) -> AgentProposal:
+    """Run the Discovery Agent against a base URL and persist the proposal."""
+    if _mock_result is not None:
+        content = _mock_result
+    else:
+        try:
+            agent = DiscoveryAgent(api_key=_get_api_key(), model=_get_model())
+            content = await agent.discover(base_url, auth_config)
+        except Exception as exc:
+            raise ProposalError(f"Discovery agent failed: {exc}") from exc
+
+    proposal = AgentProposal(
+        proposal_type="discovery",
+        status="proposed",
+        content=content.model_dump(),
+        confidence=None,
+    )
+    db.add(proposal)
+    await db.flush()
+    logger.info(
+        "discovery proposal created",
+        proposal_id=str(proposal.id),
+        base_url=base_url,
+        resource_count=len(content.resources),
+    )
+    return proposal
+
+
+async def confirm_discovery_proposal(
+    db: AsyncSession,
+    proposal_id: uuid.UUID,
+    selected_resources: list[int] | None = None,
+) -> list[Connector]:
+    """Confirm a discovery proposal. Creates connectors for selected resources."""
+    proposal = await _get_proposal_or_raise(db, proposal_id)
+    if proposal.proposal_type != "discovery":
+        raise ProposalError(
+            f"Proposal {proposal_id} is type '{proposal.proposal_type}', not 'discovery'"
+        )
+    if proposal.status != "proposed":
+        raise ProposalError(
+            f"Proposal {proposal_id} is already '{proposal.status}'"
+        )
+
+    content = DiscoveryProposalContent.model_validate(proposal.content)
+    indices = selected_resources if selected_resources is not None else list(range(len(content.resources)))
+    connectors: list[Connector] = []
+
+    for idx in indices:
+        if idx < 0 or idx >= len(content.resources):
+            raise ProposalError(f"Resource index {idx} out of range")
+        resource = content.resources[idx]
+
+        base_parsed = urlparse(content.base_url)
+
+        endpoint = resource.endpoint_path
+        if endpoint.startswith(base_parsed.path) and base_parsed.path != "/":
+            endpoint = endpoint[len(base_parsed.path):]
+            if not endpoint.startswith("/"):
+                endpoint = "/" + endpoint
+
+        pagination = resource.pagination.model_dump(exclude_none=True)
+        if pagination.get("strategy") == "offset" and "page_size" not in pagination:
+            pagination["page_size"] = 10
+
+        connector = Connector(
+            type="rest_api",
+            name=f"{resource.resource_name} ({content.base_url})",
+            config={
+                "base_url": content.base_url,
+                "endpoint": endpoint,
+                "auth": content.auth.model_dump() if content.auth.auth_required else {"type": "none"},
+                "records_jsonpath": resource.records_jsonpath,
+                "pagination": pagination,
+            },
+            status="active",
+        )
+       
+        db.add(connector)
+        connectors.append(connector)
+    proposal.status = "confirmed"
+    await db.flush()
+
+    # Queue schema proposals for each new connector (non-fatal)
+    for connector in connectors:
+        try:
+            await propose_schema(db, connector.id)
+        except ProposalError:
+            logger.warning(
+                "schema proposal auto-queue failed",
+                connector_id=str(connector.id),
+            )
+
+    logger.info(
+        "discovery proposal confirmed",
+        proposal_id=str(proposal_id),
+        connectors_created=len(connectors),
+    )
+    return connectors
