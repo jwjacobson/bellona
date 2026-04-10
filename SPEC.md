@@ -327,6 +327,434 @@ Translates natural language questions into structured queries against the ontolo
 - **Output:** Query results in a readable format, along with the structured query that was executed (for transparency).
 - Exposes the generated query so users can learn the query syntax and eventually write their own.
 
+## Added 3/20/2026
+## 6.2.5 Discovery Agent
+
+The Discovery Agent automates the reconnaissance step of connecting a new REST API. Given only a base URL, it explores the API, discovers available resources, infers pagination strategies and authentication requirements, determines record extraction paths, and produces a complete connector configuration for each discovered resource -- all as a single reviewable proposal.
+
+This agent is what makes Bellona's "just give it a URL" promise real. Without it, users must manually determine endpoint paths, pagination parameters, JSONPath expressions, and auth requirements before creating a connector -- exactly the kind of tedious, error-prone work the platform is designed to eliminate.
+
+### Motivation
+
+The SWAPI integration test exposed this gap directly. Creating a working connector required:
+
+1. Manually discovering that `/api/people/` was a valid resource endpoint
+2. Knowing that records live at `$.results` in the response (not `$.data`, not the root)
+3. Knowing that pagination uses `?page=N` with a `next` field for continuation
+4. Getting the connector config structure exactly right (`records_jsonpath` not `record_path`, nested `pagination.strategy` not flat `pagination_strategy`)
+
+Each of these is a question the agent can answer by making HTTP requests and examining responses.
+
+### Input
+
+A single base URL (e.g., `https://swapi.dev/api/`). Optionally, auth credentials if the user knows the API requires authentication.
+
+### Output
+
+A `DiscoveryProposal` containing:
+
+- A list of discovered API resources, each with:
+  - Resource name (human-readable, inferred from the endpoint path)
+  - Endpoint path (relative to base URL)
+  - Pagination strategy and parameters
+  - Record JSONPath (where the actual records live in the response)
+  - Sample record (one representative record for the user to inspect)
+  - Inferred record schema (field names, types, required/optional)
+- Auth detection results (what kind of auth the API expects, if any)
+- A proposed connector config for each resource, ready to be confirmed and created
+
+The user reviews the full proposal, can accept/reject individual resources, and confirmed resources become connectors with field mappings automatically queued for the Mapper Agent.
+
+### Agent Design
+
+#### Identity
+
+```
+name: "discovery-agent"
+description: "Explores REST APIs to discover available resources, pagination strategies, record formats, and authentication requirements."
+instructions: See prompt specification below.
+output_schema: DiscoveryProposalContent (Pydantic model)
+```
+
+#### Tools
+
+The Discovery Agent uses four custom tools, all implemented as Python functions following the Agno tool pattern (typed parameters, docstrings, string-serializable return values).
+
+**1. `http_get(url: str, headers: dict[str, str] | None = None) -> str`**
+
+Makes a GET request to the given URL and returns the response as a JSON string, including the status code and response headers. This is the agent's primary exploration mechanism.
+
+Returns a JSON object:
+```json
+{
+  "status_code": 200,
+  "headers": {"content-type": "application/json", ...},
+  "body": { ... },
+  "url": "https://swapi.dev/api/people/"
+}
+```
+
+On non-2xx responses, returns the status code and body so the agent can reason about auth requirements (401/403) or missing endpoints (404).
+
+Implementation note: Uses `httpx.AsyncClient` with a timeout (30s), follows redirects, and strips sensitive headers from the response. The agent cannot make POST/PUT/DELETE requests -- discovery is read-only.
+
+**2. `extract_jsonpath(data: str, path: str) -> str`**
+
+Applies a JSONPath expression to a JSON string and returns the matched results. Used by the agent to test candidate record extraction paths.
+
+```python
+# Agent calls: extract_jsonpath('{"results": [{"name": "Luke"}]}', '$.results')
+# Returns: '[{"name": "Luke"}]'
+```
+
+Implementation note: Uses `jsonpath_ng` (already a dependency via the REST connector).
+
+**3. `infer_schema(records_json: str) -> str`**
+
+Takes a JSON array of records and returns a schema summary: field names, inferred types (string, integer, float, boolean, array, object, null), and whether each field appears in all records (required) or only some (optional).
+
+```json
+{
+  "fields": [
+    {"name": "name", "type": "string", "required": true},
+    {"name": "height", "type": "string", "required": true},
+    {"name": "mass", "type": "string", "required": false}
+  ],
+  "record_count": 10
+}
+```
+
+Implementation note: Pure Python, no LLM call. Iterates over records and builds a type/presence map. This is deterministic -- the agent uses it as a data tool, not for reasoning.
+
+**4. `detect_pagination(response_json: str, url: str) -> str`**
+
+Analyzes a single API response and the URL that produced it. Looks for common pagination indicators:
+
+- Response body keys: `next`, `previous`, `count`, `total`, `page`, `offset`, `cursor`, `has_more`, `next_cursor`
+- Link headers: parses `Link` header for `rel="next"` / `rel="prev"`
+- URL query params: detects `?page=`, `?offset=`, `?cursor=`, `?limit=`
+
+Returns a JSON object with detected signals:
+```json
+{
+  "detected_strategy": "offset",
+  "confidence": "high",
+  "signals": {
+    "has_next_field": true,
+    "has_count_field": true,
+    "next_url": "https://swapi.dev/api/people/?page=2",
+    "page_param": "page"
+  }
+}
+```
+
+Implementation note: Pure Python heuristic analysis, no LLM call. The agent uses these signals to make its final pagination determination.
+
+#### Prompt Specification
+
+The Discovery Agent receives a system prompt with these instructions:
+
+```
+You are a REST API discovery agent. Your job is to explore an API starting from a base URL and produce a complete description of its resources, suitable for configuring data connectors.
+
+EXPLORATION STRATEGY:
+
+1. Fetch the base URL. Examine the response:
+   - If it returns a directory of endpoints (like {"people": "https://swapi.dev/api/people/", ...}), you've found a resource index. Explore each one.
+   - If it returns a collection of records directly, treat the base URL itself as a single resource.
+   - If it returns 401/403, note that auth is required and include that in your output.
+   - If it returns 404 or an error, try common patterns: /api/, /v1/, /api/v1/
+
+2. For each resource endpoint:
+   a. Fetch the endpoint.
+   b. Use detect_pagination to analyze the response for pagination signals.
+   c. Determine where records live in the response:
+      - Try common paths: $.results, $.data, $.items, $.records, $ (root array)
+      - Use extract_jsonpath to test each candidate path.
+      - The correct path is the one that returns an array of objects with consistent keys.
+   d. Use extract_jsonpath with the correct path to get sample records.
+   e. Use infer_schema on the sample records to get the field structure.
+
+3. For auth detection:
+   - A 200 on the base URL with data means no auth required (at least for read).
+   - A 401 means auth is required. Check the WWW-Authenticate header for the scheme.
+   - A 403 may mean auth is required or the resource is forbidden even with auth.
+   - Common patterns: Bearer token, API key (in header or query param), Basic auth.
+
+IMPORTANT CONSTRAINTS:
+
+- You are read-only. Never attempt to write, modify, or delete data.
+- Limit exploration to 20 HTTP requests total to avoid hammering the API.
+- Fetch at most 1 page per resource -- you need a sample, not the full dataset.
+- If an API has more than 10 resources, include all of them but note that the user may want to select a subset.
+- Be conservative in your type inferences. If a field contains "unknown" or "n/a" as string values, keep it as string even if other values look numeric.
+```
+
+### Data Model
+
+#### DiscoveryProposalContent (Pydantic -- output_schema for the agent)
+
+```python
+class DiscoveredResource(BaseModel):
+    """A single API resource discovered by the agent."""
+    resource_name: str                           # e.g., "people", "planets"
+    endpoint_path: str                           # e.g., "/api/people/"
+    records_jsonpath: str                        # e.g., "$.results"
+    pagination: PaginationConfig                 # strategy + params
+    sample_record: dict[str, Any]                # one representative record
+    schema_summary: list[FieldSummary]           # inferred field names/types
+    record_count_estimate: int | None = None     # total records if available from API
+
+class FieldSummary(BaseModel):
+    """Inferred field from sample records."""
+    name: str
+    inferred_type: str                           # string, integer, float, boolean, array, object
+    required: bool                               # appears in all sampled records
+    sample_values: list[str]                     # up to 3 example values (as strings)
+
+class PaginationConfig(BaseModel):
+    """Pagination configuration for a resource."""
+    strategy: Literal["offset", "cursor", "link_header", "none"]
+    page_param: str | None = None                # e.g., "page" for offset
+    size_param: str | None = None                # e.g., "page_size", "limit"
+    cursor_param: str | None = None              # for cursor-based
+    next_field_jsonpath: str | None = None       # e.g., "$.next" for SWAPI
+
+class AuthDetection(BaseModel):
+    """What the agent detected about API authentication."""
+    auth_required: bool
+    detected_scheme: Literal["none", "bearer", "api_key", "basic", "unknown"] = "none"
+    details: str | None = None                   # e.g., "WWW-Authenticate: Bearer"
+
+class DiscoveryProposalContent(BaseModel):
+    """Full output of the Discovery Agent."""
+    base_url: str
+    api_description: str                         # agent's summary of what this API provides
+    auth: AuthDetection
+    resources: list[DiscoveredResource]
+    agent_notes: str | None = None               # any caveats or observations
+```
+
+#### AgentProposal integration
+
+Discovery proposals use the existing `AgentProposal` model with `proposal_type = "discovery"`. The `proposal_content` JSONB column stores the serialized `DiscoveryProposalContent`.
+
+Confirmation of a discovery proposal triggers creation of:
+1. One `Connector` per confirmed resource (with the proposed config)
+2. Automatic queueing of schema proposals for each connector (delegating to the Schema Agent)
+
+The user can selectively confirm resources within a single proposal -- this is handled at the service layer by accepting a list of resource indices to confirm.
+
+### Service Layer
+
+Add to `services/agent_service.py`:
+
+```python
+async def discover_api(
+    db: AsyncSession,
+    base_url: str,
+    auth_config: dict[str, Any] | None = None,
+    *,
+    _mock_result: DiscoveryProposalContent | None = None,
+) -> AgentProposal:
+    """
+    Run the Discovery Agent against a base URL.
+    Returns an AgentProposal with proposal_type="discovery".
+    """
+    if _mock_result is not None:
+        content = _mock_result
+    else:
+        try:
+            agent = DiscoveryAgent(api_key=_get_api_key(), model=_get_model())
+            content = await agent.discover(base_url, auth_config)
+        except Exception as exc:
+            raise ProposalError(f"Discovery agent failed: {exc}") from exc
+
+    proposal = AgentProposal(
+        proposal_type="discovery",
+        proposal_content=content.model_dump(),
+        status="proposed",
+        proposed_by="agent",
+    )
+    db.add(proposal)
+    await db.commit()
+    await db.refresh(proposal)
+    return proposal
+
+
+async def confirm_discovery_proposal(
+    db: AsyncSession,
+    proposal_id: uuid.UUID,
+    selected_resources: list[int] | None = None,
+) -> list[Connector]:
+    """
+    Confirm a discovery proposal. Creates connectors for selected resources
+    (or all resources if selected_resources is None).
+    Queues schema proposals for each created connector.
+
+    Returns the list of created Connectors.
+    """
+    proposal = await _get_proposal_or_raise(db, proposal_id)
+    if proposal.proposal_type != "discovery":
+        raise ProposalError("Proposal is not a discovery proposal")
+    if proposal.status != "proposed":
+        raise ProposalError(f"Proposal status is '{proposal.status}', expected 'proposed'")
+
+    content = DiscoveryProposalContent.model_validate(proposal.proposal_content)
+
+    indices = selected_resources or list(range(len(content.resources)))
+    connectors = []
+
+    for idx in indices:
+        if idx < 0 or idx >= len(content.resources):
+            raise ProposalError(f"Resource index {idx} out of range")
+        resource = content.resources[idx]
+
+        connector = Connector(
+            type="rest_api",
+            name=f"{resource.resource_name} ({content.base_url})",
+            config={
+                "base_url": content.base_url,
+                "endpoint": resource.endpoint_path,
+                "auth": content.auth.model_dump() if content.auth.auth_required else {"type": "none"},
+                "records_jsonpath": resource.records_jsonpath,
+                "pagination": resource.pagination.model_dump(exclude_none=True),
+            },
+            status="active",
+        )
+        db.add(connector)
+        connectors.append(connector)
+
+    proposal.status = "confirmed"
+    await db.commit()
+
+    # Queue schema proposals for each new connector
+    for connector in connectors:
+        await db.refresh(connector)
+        try:
+            await propose_schema(db, connector.id)
+        except ProposalError:
+            pass  # Non-fatal: user can trigger schema proposal manually
+
+    return connectors
+```
+
+### API Endpoints
+
+Add to the agent router (`api/v1/agents.py`):
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/v1/discovery/discover` | Start discovery for a base URL |
+| POST | `/api/v1/discovery/{proposal_id}/confirm` | Confirm discovery, create connectors |
+
+```python
+@router.post("/discovery/discover")
+async def discover_api(
+    request: DiscoveryRequest,
+    db: AsyncSession = Depends(get_db),
+) -> AgentProposalRead:
+    proposal = await agent_service.discover_api(
+        db, request.base_url, request.auth_config
+    )
+    return AgentProposalRead.model_validate(proposal)
+
+
+@router.post("/discovery/{proposal_id}/confirm")
+async def confirm_discovery(
+    proposal_id: uuid.UUID,
+    request: ConfirmDiscoveryRequest | None = None,
+    db: AsyncSession = Depends(get_db),
+) -> list[ConnectorRead]:
+    selected = request.selected_resources if request else None
+    connectors = await agent_service.confirm_discovery_proposal(
+        db, proposal_id, selected
+    )
+    return [ConnectorRead.model_validate(c) for c in connectors]
+```
+
+#### Request/Response Schemas
+
+```python
+class DiscoveryRequest(BaseModel):
+    base_url: str                                   # e.g., "https://swapi.dev/api/"
+    auth_config: dict[str, Any] | None = None       # optional pre-known auth
+
+class ConfirmDiscoveryRequest(BaseModel):
+    selected_resources: list[int] | None = None     # indices to confirm, None = all
+```
+
+### UI Integration
+
+Add to the Connectors page:
+
+1. A "Discover API" form at the top of the connector list page with a single input: base URL (and an expandable auth section).
+2. The form POSTs to `/ui/connectors/discover`, which calls the service and redirects to the Proposals page.
+3. On the Proposals page, discovery proposals render with a resource list showing name, endpoint, record count estimate, and sample record preview. Each resource has an individual confirm/skip toggle.
+4. "Confirm Selected" creates connectors for toggled resources and automatically triggers schema proposals.
+
+### Testing Strategy
+
+#### Unit Tests (`tests/unit/test_discovery_agent.py`)
+
+- `test_build_prompt` -- verify the prompt includes the base URL and optional auth context
+- `test_parse_response` -- verify `DiscoveryProposalContent` parses correctly from agent output
+- Mock `_run_agent` and verify the agent is constructed with the correct tools
+
+#### Tool Tests (`tests/unit/test_discovery_tools.py`)
+
+- `test_http_get_success` -- mock httpx, verify response structure
+- `test_http_get_auth_required` -- mock 401 response, verify status code returned
+- `test_http_get_timeout` -- mock timeout, verify graceful error
+- `test_extract_jsonpath_valid` -- test `$.results` against SWAPI-shaped data
+- `test_extract_jsonpath_root_array` -- test `$` against a root-level array
+- `test_extract_jsonpath_no_match` -- test bad path returns empty
+- `test_infer_schema_basic` -- mixed types, required vs optional
+- `test_infer_schema_empty` -- empty array input
+- `test_detect_pagination_offset` -- SWAPI-style next/previous/count
+- `test_detect_pagination_cursor` -- cursor-based response shape
+- `test_detect_pagination_link_header` -- Link header parsing
+- `test_detect_pagination_none` -- single-page response
+
+#### Integration Tests (`tests/integration/test_discovery_service.py`)
+
+- `test_discover_api` -- mock agent result, verify proposal created with correct type and content
+- `test_confirm_discovery_creates_connectors` -- verify connectors created with correct config
+- `test_confirm_discovery_selected_resources` -- verify only selected indices create connectors
+- `test_confirm_discovery_queues_schema_proposals` -- verify schema proposals triggered
+- `test_confirm_discovery_wrong_type` -- verify error for non-discovery proposal
+- `test_confirm_discovery_already_confirmed` -- verify status guard
+
+#### Live Tests (`tests/live/test_live_discovery.py`)
+
+- `test_discover_swapi` -- hit real SWAPI, verify agent finds people/planets/films/etc., correct pagination, correct record paths
+- `test_discover_auth_required` -- hit an API that requires auth (e.g., httpbin.org/bearer), verify auth detection
+
+### Development Roadmap Integration
+
+This should be inserted as a **new phase** or as part of an MVP polish phase, since it depends on the existing agent infrastructure (Phase 3) and the UI (Phase 5) being complete. Suggested insertion:
+
+**Phase 6: Discovery Agent**
+
+- Discovery Agent with four tools (http_get, extract_jsonpath, infer_schema, detect_pagination)
+- DiscoveryProposalContent schema and proposal flow
+- Service layer: discover_api, confirm_discovery_proposal
+- API endpoints: POST /discovery/discover, POST /discovery/{proposal_id}/confirm
+- UI: "Discover API" form on Connectors page, resource selection on Proposals page
+- Confirmation auto-creates connectors and queues schema proposals
+- Unit, integration, and live tests
+
+**Acceptance Criteria:**
+
+Given `https://swapi.dev/api/` as input, the Discovery Agent should:
+1. Find at least 5 resources (people, planets, films, species, vehicles, starships)
+2. Correctly identify `$.results` as the record extraction path
+3. Correctly identify offset pagination with `?page=N`
+4. Correctly determine no auth is required
+5. Produce a valid connector config for each resource that, when confirmed and synced, successfully ingests data
+
+This is the "five-minute demo" path from the spec, but starting one step earlier -- the user doesn't even need to know what endpoints exist.
+
 ### 6.3 Human-in-the-Loop
 
 All agent proposals go through a confirmation flow:
