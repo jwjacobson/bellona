@@ -5,6 +5,7 @@ from typing import Any
 
 from bellona.schemas.ontology import PropertyDefinitionCreate
 
+_NULL_SENTINELS = {"unknown", "n/a", "na", "none", "-", "null", ""}
 
 @dataclass
 class FieldError:
@@ -22,6 +23,13 @@ class ValidationResult:
 def _coerce(value: Any, data_type: str) -> tuple[Any, str | None]:
     """Attempt to coerce value to data_type. Returns (coerced_value, error_message)."""
     if value is None:
+        return None, None
+
+    if (
+        isinstance(value, str)
+        and data_type not in ("string", "enum")
+        and value.lower().strip() in _NULL_SENTINELS
+    ):
         return None, None
 
     try:

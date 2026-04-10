@@ -19,6 +19,7 @@ from bellona.connectors.base import (
 
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
+_NULL_SENTINELS = {"unknown", "n/a", "na", "none", "-", "null", ""}
 
 
 class RESTConnector(BaseConnector):
@@ -93,8 +94,25 @@ class RESTConnector(BaseConnector):
                     return m.group(1)
         return None
 
+    def _build_url(self) -> str:
+        base = self.config["base_url"].rstrip("/")
+        endpoint = self.config.get("endpoint", "")
+        if endpoint and not endpoint.startswith("/"):
+            endpoint = "/" + endpoint
+        return base + endpoint
+
+    def _detect_sentinels(self, values: list[Any]) -> list[str]:
+        """Find string values that look like null placeholders."""
+        found = []
+        for v in values:
+            if isinstance(v, str) and v.lower().strip() in _NULL_SENTINELS:
+                if v not in found:
+                    found.append(v)
+        return found
+
+
     async def connect(self) -> ConnectionStatus:
-        url = self.config["base_url"] + self.config["endpoint"]
+        url = self._build_url()
         try:
             response = await self._client.get(url, headers=self._build_headers())
             if response.status_code < 400:
@@ -106,10 +124,31 @@ class RESTConnector(BaseConnector):
             return ConnectionStatus(connected=False, message=str(exc))
 
     async def discover_schema(self, sample_size: int = 100) -> SchemaDiscovery:
-        url = self.config["base_url"] + self.config["endpoint"]
-        response = await self._client.get(url, headers=self._build_headers())
-        response.raise_for_status()
-        records = self._extract_records(response.json())[:sample_size]
+        url = self._build_url()
+        headers = self._build_headers()
+        pagination = self.config.get("pagination", {})
+        strategy = pagination.get("strategy", "none")
+
+        if strategy == "offset":
+            page_size = pagination.get("page_size", 100)
+            page_param = pagination.get("page_param", "page")
+            size_param = pagination.get("size_param", "per_page")
+            max_pages = 3
+            records: list[dict[str, Any]] = []
+            for page in range(1, max_pages + 1):
+                params = {page_param: page, size_param: page_size}
+                response = await self._client.get(url, headers=headers, params=params)
+                response.raise_for_status()
+                page_records = self._extract_records(response.json())
+                records.extend(page_records)
+                if len(records) >= sample_size or len(page_records) < page_size:
+                    break
+            records = records[:sample_size]
+        else:
+            response = await self._client.get(url, headers=headers)
+            response.raise_for_status()
+            records = self._extract_records(response.json())[:sample_size]
+
         if not records:
             return SchemaDiscovery(fields=[])
 
@@ -120,23 +159,26 @@ class RESTConnector(BaseConnector):
         for key in all_keys:
             values = [r[key] for r in records if key in r]
             nullable = any(v is None for v in values) or len(values) < len(records)
+            sentinels = self._detect_sentinels(values)
+            clean_values = [v for v in values if not (isinstance(v, str) and v.lower().strip() in _NULL_SENTINELS)]
             fields.append(
                 SchemaField(
                     name=key,
-                    inferred_type=self._infer_type_from_samples(values),
-                    nullable=nullable,
+                    inferred_type=self._infer_type_from_samples(clean_values),
+                    nullable=nullable or bool(sentinels),
                     sample_values=[v for v in values[:5] if v is not None],
+                    null_sentinels=sentinels
                 )
             )
         return SchemaDiscovery(fields=fields)
 
     async def fetch_records(self) -> AsyncIterator[SourceRecord]:  # type: ignore[override]
-        url = self.config["base_url"] + self.config["endpoint"]
+        url = self._build_url()
         headers = self._build_headers()
         pagination = self.config.get("pagination", {})
         strategy = pagination.get("strategy", "none")
         fetch_time = datetime.now(UTC).isoformat()
-        source_id = self.config["base_url"] + self.config["endpoint"]
+        source_id = url
 
         def _make_record(data: dict[str, Any]) -> SourceRecord:
             return SourceRecord(
@@ -162,6 +204,8 @@ class RESTConnector(BaseConnector):
             while True:
                 params = {page_param: page, size_param: page_size}
                 response = await self._client.get(url, headers=headers, params=params)
+                if response.status_code == 404:
+                    break
                 response.raise_for_status()
                 records = self._extract_records(response.json())
                 if not records:
