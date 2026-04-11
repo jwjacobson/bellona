@@ -7,12 +7,13 @@ from fastapi import APIRouter, BackgroundTasks, Depends, Form, Request, UploadFi
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from bellona.api.ui.templates import templates
 from bellona.core.config import get_settings
 from bellona.db.session import get_db
 from bellona.models.ontology import EntityType
-from bellona.models.system import IngestionJob
+from bellona.models.system import AgentProposal, FieldMapping, IngestionJob
 from bellona.schemas.connectors import ConnectorPatch
 from bellona.services.agent_service import propose_mapping, propose_schema, ProposalError
 from bellona.services.ingestion import (
@@ -31,8 +32,74 @@ router = APIRouter(prefix="/connectors")
 @router.get("")
 async def connectors_index(request: Request, db: AsyncSession = Depends(get_db)):
     connectors = await list_connectors(db)
+
+    # Build pipeline state per connector
+    connector_ids = [c.id for c in connectors]
+    pipeline: dict[uuid.UUID, dict[str, str]] = {}
+
+    if connector_ids:
+        # Schema proposals (entity_type proposals linked to connectors)
+        schema_result = await db.execute(
+            select(AgentProposal)
+            .where(
+                AgentProposal.connector_id.in_(connector_ids),
+                AgentProposal.proposal_type == "entity_type",
+            )
+            .order_by(AgentProposal.created_at.desc())
+        )
+        schema_proposals = list(schema_result.scalars().all())
+
+        # Mapping proposals
+        mapping_result = await db.execute(
+            select(AgentProposal)
+            .where(
+                AgentProposal.connector_id.in_(connector_ids),
+                AgentProposal.proposal_type == "mapping",
+            )
+            .order_by(AgentProposal.created_at.desc())
+        )
+        mapping_proposals = list(mapping_result.scalars().all())
+
+        # Confirmed field mappings
+        fm_result = await db.execute(
+            select(FieldMapping)
+            .where(
+                FieldMapping.connector_id.in_(connector_ids),
+                FieldMapping.status == "confirmed",
+            )
+        )
+        confirmed_mappings = list(fm_result.scalars().all())
+        confirmed_mapping_connector_ids = {fm.connector_id for fm in confirmed_mappings}
+
+        for cid in connector_ids:
+            # Schema status
+            schema_for_conn = [p for p in schema_proposals if p.connector_id == cid]
+            if any(p.status == "confirmed" for p in schema_for_conn):
+                schema_status = "confirmed"
+            elif any(p.status == "proposed" for p in schema_for_conn):
+                schema_status = "proposed"
+            else:
+                schema_status = "none"
+
+            # Mapping status
+            if cid in confirmed_mapping_connector_ids:
+                mapping_status = "confirmed"
+            else:
+                mapping_for_conn = [p for p in mapping_proposals if p.connector_id == cid]
+                if any(p.status == "confirmed" for p in mapping_for_conn):
+                    mapping_status = "confirmed"
+                elif any(p.status == "proposed" for p in mapping_for_conn):
+                    mapping_status = "proposed"
+                else:
+                    mapping_status = "none"
+
+            pipeline[cid] = {
+                "schema_status": schema_status,
+                "mapping_status": mapping_status,
+            }
+
     return templates.TemplateResponse(
-        request, "connectors/index.html", {"connectors": connectors}
+        request, "connectors/index.html", {"connectors": connectors, "pipeline": pipeline}
     )
 
 
@@ -132,7 +199,7 @@ async def connector_detail(
     connector = await get_connector(db, connector_id)
     if connector is None:
         return templates.TemplateResponse(request, "404.html", {}, status_code=404)
- 
+
     result = await db.execute(
         select(IngestionJob)
         .where(IngestionJob.connector_id == connector_id)
@@ -140,15 +207,75 @@ async def connector_detail(
         .limit(20)
     )
     jobs = list(result.scalars().all())
- 
+
     # Load entity types for the mapping proposal dropdown
     et_result = await db.execute(select(EntityType).order_by(EntityType.name))
     entity_types = list(et_result.scalars().all())
- 
+
+    # Pipeline state: schema proposal
+    schema_result = await db.execute(
+        select(AgentProposal)
+        .where(
+            AgentProposal.connector_id == connector_id,
+            AgentProposal.proposal_type == "entity_type",
+        )
+        .order_by(AgentProposal.created_at.desc())
+        .limit(1)
+    )
+    schema_proposal = schema_result.scalar_one_or_none()
+
+    # Pipeline state: mapping proposal
+    mapping_prop_result = await db.execute(
+        select(AgentProposal)
+        .where(
+            AgentProposal.connector_id == connector_id,
+            AgentProposal.proposal_type == "mapping",
+        )
+        .order_by(AgentProposal.created_at.desc())
+        .limit(1)
+    )
+    mapping_proposal = mapping_prop_result.scalar_one_or_none()
+
+    # Confirmed field mapping
+    fm_result = await db.execute(
+        select(FieldMapping)
+        .where(
+            FieldMapping.connector_id == connector_id,
+            FieldMapping.status == "confirmed",
+        )
+        .order_by(FieldMapping.id.desc())
+        .limit(1)
+    )
+    field_mapping = fm_result.scalar_one_or_none()
+
+    # Confirmed entity type (from confirmed schema proposal)
+    confirmed_entity_type = None
+    if schema_proposal and schema_proposal.status == "confirmed" and schema_proposal.entity_type_id:
+        et_load = await db.execute(
+            select(EntityType)
+            .where(EntityType.id == schema_proposal.entity_type_id)
+            .options(selectinload(EntityType.property_definitions))
+        )
+        confirmed_entity_type = et_load.scalar_one_or_none()
+
+    # Most recent completed job for sync info
+    last_completed_job = next(
+        (j for j in jobs if j.status == "completed"), None
+    )
+
     return templates.TemplateResponse(
         request,
         "connectors/detail.html",
-        {"connector": connector, "jobs": jobs, "entity_types": entity_types},
+        {
+            "connector": connector,
+            "jobs": jobs,
+            "entity_types": entity_types,
+            "schema_proposal": schema_proposal,
+            "mapping_proposal": mapping_proposal,
+            "field_mapping": field_mapping,
+            "confirmed_entity_type": confirmed_entity_type,
+            "last_completed_job": last_completed_job,
+        },
     )
 
 

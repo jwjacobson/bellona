@@ -14,7 +14,7 @@
         <tr class="bg-stone-800 text-stone-300">
           <th class="px-4 py-2 text-left font-medium">Name</th>
           <th class="px-4 py-2 text-left font-medium">Type</th>
-          <th class="px-4 py-2 text-left font-medium">Status</th>
+          <th class="px-4 py-2 text-left font-medium">Pipeline</th>
           <th class="px-4 py-2 text-left font-medium">Last Sync</th>
           <th class="px-4 py-2 text-left font-medium"></th>
         </tr>
@@ -25,13 +25,16 @@
           <td class="px-4 py-2 font-medium text-stone-100">{{ conn.name }}</td>
           <td class="px-4 py-2 text-emerald-500">{{ conn.type }}</td>
           <td class="px-4 py-2">
-            {% if conn.status == "active" %}
-            <span class="text-emerald-400 text-xs">{{ conn.status }}</span>
-            {% elif conn.status == "error" %}
-            <span class="text-red-400 text-xs">{{ conn.status }}</span>
-            {% else %}
-            <span class="text-stone-400 text-xs">{{ conn.status }}</span>
-            {% endif %}
+            {% set p = pipeline.get(conn.id, {}) %}
+            {% set ss = p.get("schema_status", "none") %}
+            {% set ms = p.get("mapping_status", "none") %}
+            <div class="text-xs leading-relaxed">
+              <div>Schema: <span class="{% if ss == 'confirmed' %}text-emerald-400{% elif ss == 'proposed' %}text-amber-400{% else %}text-stone-500{% endif %}">{{ ss }}</span></div>
+              <div>Mapping: <span class="{% if ms == 'confirmed' %}text-emerald-400{% elif ms == 'proposed' %}text-amber-400{% else %}text-stone-500{% endif %}">{{ ms }}</span></div>
+              {% if conn.last_sync_at %}
+              <div>Synced: <span class="text-emerald-400">{{ conn.last_sync_at.strftime("%Y-%m-%d") }}</span></div>
+              {% endif %}
+            </div>
           </td>
           <td class="px-4 py-2 text-stone-400 text-xs">
             {% if conn.last_sync_at %}{{ conn.last_sync_at.strftime("%Y-%m-%d %H:%M") }}{% else %}—{% endif %}

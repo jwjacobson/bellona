@@ -87,7 +87,7 @@ async def test_confirm_proposal_redirects(
         follow_redirects=False,
     )
     assert response.status_code == 303
-    assert response.headers["location"] == "/ui/proposals"
+    assert response.headers["location"] == f"/ui/connectors/{connector.id}"
 
 
 async def test_reject_proposal_redirects(

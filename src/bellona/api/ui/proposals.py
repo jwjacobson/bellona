@@ -78,6 +78,8 @@ async def confirm(
         return templates.TemplateResponse(
             request, "proposals/index.html", ctx, status_code=422,
         )
+    if proposal.connector_id:
+        return RedirectResponse(url=f"/ui/connectors/{proposal.connector_id}", status_code=303)
     return RedirectResponse(url="/ui/proposals", status_code=303)
 
 
