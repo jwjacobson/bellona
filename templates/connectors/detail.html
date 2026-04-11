@@ -72,34 +72,32 @@
           {% endif %}
         </div>
 
-        <!-- Last Sync -->
-        <div class="flex items-center gap-3">
-          <span class="text-xs text-stone-400 w-28 shrink-0 uppercase tracking-wider">Sync</span>
-          {% if last_completed_job %}
-          <span class="text-xs text-emerald-400">
-            {{ last_completed_job.completed_at.strftime("%Y-%m-%d %H:%M") }}
-            — {{ last_completed_job.records_processed }} records
-          </span>
-          <form method="post" action="/ui/connectors/{{ connector.id }}/sync" class="ml-2">
-            <button type="submit"
-                    class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white py-1 px-2 border border-emerald-600">
-              Sync Again
-            </button>
-          </form>
-          {% else %}
-          <span class="text-xs text-stone-500">Never synced</span>
-          <form method="post" action="/ui/connectors/{{ connector.id }}/sync" class="ml-2">
-            <button type="submit"
-                    class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white py-1 px-2 border border-emerald-600">
-              Trigger Sync
-            </button>
-          </form>
-          {% endif %}
-        </div>
-
-      </div>
-    </div>
-
+<!-- Last Sync -->
+<div class="flex items-center gap-3" id="pipeline-sync">
+  <span class="text-xs text-stone-400 w-28 shrink-0 uppercase tracking-wider">Sync</span>
+  {% if not confirmed_entity_type or not field_mapping %}
+  <span class="text-xs text-stone-500">Confirm schema and mapping first</span>
+  {% elif last_completed_job %}
+  <span class="text-xs text-emerald-400">
+    {{ last_completed_job.completed_at.strftime("%Y-%m-%d %H:%M") }}
+    — {{ last_completed_job.records_processed }} records
+  </span>
+  <form method="post" action="/ui/connectors/{{ connector.id }}/sync" class="ml-2">
+    <button type="submit"
+            class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white py-1 px-2 border border-emerald-600">
+      Sync Again
+    </button>
+  </form>
+  {% else %}
+  <span class="text-xs text-stone-500">Never synced</span>
+  <form method="post" action="/ui/connectors/{{ connector.id }}/sync" class="ml-2">
+    <button type="submit"
+            class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white py-1 px-2 border border-emerald-600">
+      Trigger Sync
+    </button>
+  </form>
+  {% endif %}
+</div>
     <!-- Config section with edit toggle -->
 <div class="mb-6" x-data="{ editing: false }">
   <div class="flex items-center justify-between mb-2">
@@ -188,57 +186,15 @@
   </div>
 </div>
 
-    <!-- Ingestion Jobs -->
-    <div>
-      <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase mb-2">Ingestion Jobs</h2>
-      {% if jobs %}
-      <table class="w-full text-sm border border-olive-900">
-        <thead>
-          <tr class="bg-stone-800 text-stone-300">
-            <th class="px-4 py-2 text-left font-medium">Status</th>
-            <th class="px-4 py-2 text-left font-medium">Records</th>
-            <th class="px-4 py-2 text-left font-medium">Failed</th>
-            <th class="px-4 py-2 text-left font-medium">Started</th>
-            <th class="px-4 py-2 text-left font-medium">Completed</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for job in jobs %}
-          <tr class="border-t border-olive-900">
-            <td class="px-4 py-2">
-              {% if job.status == "completed" %}
-              <span class="text-emerald-400 text-xs">{{ job.status }}</span>
-              {% elif job.status == "failed" %}
-              <span class="text-red-400 text-xs">{{ job.status }}</span>
-              {% elif job.status == "running" %}
-              <span class="text-amber-400 text-xs">{{ job.status }}</span>
-              {% else %}
-              <span class="text-stone-400 text-xs">{{ job.status }}</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-2 text-stone-100">{{ job.records_processed }}</td>
-            <td class="px-4 py-2">
-              {% if job.records_failed > 0 %}
-              <span class="text-red-400">{{ job.records_failed }}</span>
-              {% else %}
-              <span class="text-stone-500">0</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-2 text-stone-400 text-xs">
-              {% if job.started_at %}{{ job.started_at.strftime("%Y-%m-%d %H:%M:%S") }}{% else %}—{% endif %}
-            </td>
-            <td class="px-4 py-2 text-stone-400 text-xs">
-              {% if job.completed_at %}{{ job.completed_at.strftime("%Y-%m-%d %H:%M:%S") }}{% else %}—{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="text-stone-400 text-sm py-2">No ingestion jobs yet. Trigger a sync to start.</p>
-      {% endif %}
-    </div>
+  <!-- Ingestion Jobs -->
+<div>
+  <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase mb-2">Ingestion Jobs</h2>
+  <div hx-get="/ui/connectors/{{ connector.id }}/jobs"
+       hx-trigger="every 3s"
+       hx-swap="innerHTML">
+    {% include "connectors/_jobs_table.html" %}
   </div>
+</div>
 
   <!-- Sidebar -->
   <div class="w-72 shrink-0 space-y-4">

@@ -1,0 +1,46 @@
+{% if jobs %}
+<table class="w-full text-sm border border-olive-900">
+  <thead>
+    <tr class="bg-stone-800 text-stone-300">
+      <th class="px-4 py-2 text-left font-medium">Status</th>
+      <th class="px-4 py-2 text-left font-medium">Records</th>
+      <th class="px-4 py-2 text-left font-medium">Failed</th>
+      <th class="px-4 py-2 text-left font-medium">Started</th>
+      <th class="px-4 py-2 text-left font-medium">Completed</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for job in jobs %}
+    <tr class="border-t border-olive-900">
+      <td class="px-4 py-2">
+        {% if job.status == "completed" %}
+        <span class="text-emerald-400 text-xs">{{ job.status }}</span>
+        {% elif job.status == "failed" %}
+        <span class="text-red-400 text-xs">{{ job.status }}</span>
+        {% elif job.status == "running" %}
+        <span class="text-amber-400 text-xs">{{ job.status }}</span>
+        {% else %}
+        <span class="text-stone-400 text-xs">{{ job.status }}</span>
+        {% endif %}
+      </td>
+      <td class="px-4 py-2 text-stone-100">{{ job.records_processed }}</td>
+      <td class="px-4 py-2">
+        {% if job.records_failed > 0 %}
+        <span class="text-red-400">{{ job.records_failed }}</span>
+        {% else %}
+        <span class="text-stone-500">0</span>
+        {% endif %}
+      </td>
+      <td class="px-4 py-2 text-stone-400 text-xs">
+        {% if job.started_at %}{{ job.started_at.strftime("%Y-%m-%d %H:%M:%S") }}{% else %}—{% endif %}
+      </td>
+      <td class="px-4 py-2 text-stone-400 text-xs">
+        {% if job.completed_at %}{{ job.completed_at.strftime("%Y-%m-%d %H:%M:%S") }}{% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="text-stone-400 text-sm py-2">No ingestion jobs yet. Trigger a sync to start.</p>
+{% endif %}

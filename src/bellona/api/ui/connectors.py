@@ -370,3 +370,62 @@ async def edit_connector(
     await patch_connector(db, connector, patch_data)
     await db.commit()
     return RedirectResponse(url=f"/ui/connectors/{connector_id}", status_code=303)
+
+
+@router.get("/{connector_id}/jobs")
+async def connector_jobs_fragment(
+    request: Request,
+    connector_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    connector = await get_connector(db, connector_id)
+
+    result = await db.execute(
+        select(IngestionJob)
+        .where(IngestionJob.connector_id == connector_id)
+        .order_by(IngestionJob.started_at.desc())
+        .limit(20)
+    )
+    jobs = list(result.scalars().all())
+
+    last_completed_job = next(
+        (j for j in jobs if j.status == "completed"), None
+    )
+
+    # Check for confirmed entity type and mapping
+    schema_result = await db.execute(
+        select(AgentProposal)
+        .where(
+            AgentProposal.connector_id == connector_id,
+            AgentProposal.proposal_type == "entity_type",
+            AgentProposal.status == "confirmed",
+        )
+        .limit(1)
+    )
+    schema_proposal = schema_result.scalar_one_or_none()
+
+    confirmed_entity_type = None
+    if schema_proposal and schema_proposal.entity_type_id:
+        confirmed_entity_type = await db.get(EntityType, schema_proposal.entity_type_id)
+
+    fm_result = await db.execute(
+        select(FieldMapping)
+        .where(
+            FieldMapping.connector_id == connector_id,
+            FieldMapping.status == "confirmed",
+        )
+        .limit(1)
+    )
+    field_mapping = fm_result.scalar_one_or_none()
+
+    return templates.TemplateResponse(
+        request,
+        "connectors/_jobs_with_sync.html",
+        {
+            "jobs": jobs,
+            "connector": connector,
+            "last_completed_job": last_completed_job,
+            "confirmed_entity_type": confirmed_entity_type,
+            "field_mapping": field_mapping,
+        },
+    )
