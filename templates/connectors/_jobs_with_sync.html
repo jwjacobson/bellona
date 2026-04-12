@@ -1,0 +1,16 @@
+{% include "connectors/_jobs_table.html" %}
+
+<div id="jobs-container"
+     {% if has_running_job %}
+       hx-get="/ui/connectors/{{ connector.id }}/jobs"
+       hx-trigger="every 1s"
+       hx-swap="innerHTML"
+     {% endif %}
+     hx-swap-oob="outerHTML:#jobs-container">
+  {% include "connectors/_jobs_table.html" %}
+</div>
+
+
+<div hx-swap-oob="outerHTML:#pipeline-sync">
+  {% include "connectors/_pipeline_sync.html" %}
+</div>

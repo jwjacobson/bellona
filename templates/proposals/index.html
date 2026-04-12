@@ -38,6 +38,7 @@
             {% if proposal.connector_id and connectors.get(proposal.connector_id) %}
             <p class="text-xs text-stone-500 mb-1">
               Connector: <a href="/ui/connectors/{{ proposal.connector_id }}" class="text-emerald-600 hover:text-emerald-500">{{ connectors[proposal.connector_id].name }}</a>
+              <a href="/ui/connectors/{{ proposal.connector_id }}" class="text-stone-500 hover:text-stone-300 ml-2">← connector</a>
             </p>
             {% endif %}
 

@@ -265,7 +265,7 @@ async def test_connector_detail_shows_edit_button(client: AsyncClient) -> None:
     assert "Edit" in response.text or "edit" in response.text
  
  
-async def test_connector_detail_shows_propose_mapping(client: AsyncClient) -> None:
+async def test_connector_detail_shows_mapping_status(client: AsyncClient) -> None:
     create_resp = await client.post(
         "/api/v1/connectors",
         json={
@@ -286,7 +286,8 @@ async def test_connector_detail_shows_propose_mapping(client: AsyncClient) -> No
     )
     response = await client.get(f"/ui/connectors/{conn['id']}")
     assert response.status_code == 200
-    assert "Propose Mapping" in response.text
+    assert "Mapping" in response.text
+    assert "Pipeline Status" in response.text
  
  
 async def test_connector_detail_shows_propose_schema(client: AsyncClient) -> None:

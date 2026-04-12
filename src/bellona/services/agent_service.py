@@ -184,7 +184,7 @@ async def propose_schema(
 async def confirm_mapping_proposal(
     db: AsyncSession, proposal_id: uuid.UUID
 ) -> FieldMapping:
-    """Convert an approved mapping AgentProposal into a confirmed FieldMapping."""
+    """Convert a confirmed mapping AgentProposal into a confirmed FieldMapping."""
     proposal = await _get_proposal_or_raise(db, proposal_id)
     if proposal.proposal_type != "mapping":
         raise ProposalError(
@@ -214,7 +214,7 @@ async def confirm_mapping_proposal(
     )
     db.add(field_mapping)
 
-    proposal.status = "approved"
+    proposal.status = "confirmed"
     await db.flush()
 
     logger.info(
@@ -229,7 +229,7 @@ async def confirm_mapping_proposal(
 async def confirm_schema_proposal(
     db: AsyncSession, proposal_id: uuid.UUID
 ) -> EntityType:
-    """Execute an approved schema AgentProposal by creating the entity type."""
+    """Execute a confirmed schema AgentProposal by creating the entity type."""
     proposal = await _get_proposal_or_raise(db, proposal_id)
     if proposal.proposal_type != "entity_type":
         raise ProposalError(
@@ -258,7 +258,8 @@ async def confirm_schema_proposal(
         ),
     )
 
-    proposal.status = "approved"
+    proposal.entity_type_id = entity_type.id
+    proposal.status = "confirmed"
     await db.flush()
 
     logger.info(
@@ -518,7 +519,12 @@ async def confirm_discovery_proposal(
         base_parsed = urlparse(content.base_url)
 
         endpoint = resource.endpoint_path
-        if endpoint.startswith(base_parsed.path) and base_parsed.path != "/":
+        if endpoint.startswith(("http://", "https://")):
+            # Agent returned a full URL — extract just the path relative to base_url
+            endpoint = endpoint.removeprefix(content.base_url.rstrip("/"))
+            if not endpoint.startswith("/"):
+                endpoint = "/" + endpoint
+        elif endpoint.startswith(base_parsed.path) and base_parsed.path != "/":
             endpoint = endpoint[len(base_parsed.path):]
             if not endpoint.startswith("/"):
                 endpoint = "/" + endpoint

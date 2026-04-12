@@ -1,0 +1,25 @@
+<div class="flex items-center gap-3" id="pipeline-sync">
+  <span class="text-xs text-stone-400 w-28 shrink-0 uppercase tracking-wider">Sync</span>
+  {% if not confirmed_entity_type or not field_mapping %}
+  <span class="text-xs text-stone-500">Confirm schema and mapping first</span>
+  {% elif last_completed_job %}
+  <span class="text-xs text-emerald-400">
+    {{ last_completed_job.completed_at.strftime("%Y-%m-%d %H:%M") }}
+    — {{ last_completed_job.records_processed }} records
+  </span>
+  <form method="post" action="/ui/connectors/{{ connector.id }}/sync" class="ml-2">
+    <button type="submit"
+            class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white py-1 px-2 border border-emerald-600">
+      Sync Again
+    </button>
+  </form>
+  {% else %}
+  <span class="text-xs text-stone-500">Never synced</span>
+  <form method="post" action="/ui/connectors/{{ connector.id }}/sync" class="ml-2">
+    <button type="submit"
+            class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white py-1 px-2 border border-emerald-600">
+      Trigger Sync
+    </button>
+  </form>
+  {% endif %}
+</div>

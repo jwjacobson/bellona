@@ -20,6 +20,7 @@ Follows src/ layout. Installable package lives in `src/bellona/`. Tests mirror t
 - **Small steps.** Implement one thing at a time, confirm it works, move on.
 - **No commits.** Leave all git operations to the developer.
 - **Do not use sudo.** If a task requires elevated privileges, output the command and ask the developer to run it manually.
+- **Use `uv run pytest` to run tests.** Do not set PYTHONPATH manually — the project is properly configured with pytest.ini and an installable src/ layout. Just `uv run pytest [args]`.
 
 ## Code Style
 - Type annotations on all functions

@@ -264,6 +264,7 @@ async def _execute_ingestion_job(job_id: uuid.UUID, db: AsyncSession) -> None:
         job.records_failed = records_failed
         job.error_log = {"errors": error_entries} if error_entries else None
         job.completed_at = datetime.now(UTC)
+        connector_model.last_sync_at = datetime.now(UTC)
         await db.flush()
 
         log_fn = logger.warning if records_failed else logger.info
