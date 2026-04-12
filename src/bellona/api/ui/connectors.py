@@ -387,6 +387,7 @@ async def connector_jobs_fragment(
         .limit(20)
     )
     jobs = list(result.scalars().all())
+    has_running_job = bool(jobs and jobs[0].status in ("running", "pending"))
 
     last_completed_job = next(
         (j for j in jobs if j.status == "completed"), None
@@ -423,6 +424,7 @@ async def connector_jobs_fragment(
         "connectors/_jobs_with_sync.html",
         {
             "jobs": jobs,
+            "has_running_job": has_running_job,
             "connector": connector,
             "last_completed_job": last_completed_job,
             "confirmed_entity_type": confirmed_entity_type,

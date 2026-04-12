@@ -1,27 +1,30 @@
 {% extends "base.html" %}
 {% block title %}{{ connector.name }} — Bellona{% endblock %}
 
+{% set type_colors = {
+  'rest_api': 'text-amber-700',
+  'csv': 'text-cyan-600',
+} %}
+
 {% block content %}
 <div class="mb-4">
   <a href="/ui/connectors" class="text-stone-400 hover:text-stone-200 text-sm">← Connectors</a>
 </div>
 
-<div class="flex gap-6 items-start">
-
-  <!-- Connector info + jobs -->
-  <div class="flex-1">
-    <div class="flex items-start justify-between mb-6">
-      <div>
-        <h1 class="text-xl font-bold tracking-wide text-stone-100">{{ connector.name }}</h1>
-        <p class="text-emerald-500 text-sm mt-1">{{ connector.type }}</p>
-        <p class="text-stone-500 text-xs mt-1">{{ connector.id }}</p>
-      </div>
+<div class="flex-1">
+  <div class="flex items-start justify-between mb-6">
+    <div>
+      <h1 class="text-xl font-bold tracking-wide text-stone-100">{{ connector.name }}</h1>
+      <p class="{{ type_colors.get(connector.type, 'text-stone-400') }} text-sm mt-1">{{ connector.type }}</p>
+      <p class="text-stone-500 text-xs mt-1">{{ connector.id }}</p>
     </div>
+  </div>
 
-    <!-- Pipeline Status -->
-    <div class="mb-6 bg-stone-800 border border-olive-900 p-4">
-      <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase mb-3">Pipeline Status</h2>
-      <div class="space-y-3">
+  <!-- Pipeline Status -->
+  <div class="mb-6 bg-stone-800 border border-olive-900 p-4">
+    <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase mb-3">Pipeline Status</h2>
+    <div class="flex gap-6">
+      <div class="flex-1 space-y-3">
 
         <!-- Schema / Entity Type -->
         <div class="flex items-center gap-3">
@@ -36,10 +39,18 @@
           <a href="/ui/proposals" class="text-xs text-stone-500 hover:text-stone-300 ml-2">view →</a>
           {% else %}
           <span class="text-xs text-stone-500">No schema proposed</span>
-          <form method="post" action="/ui/connectors/{{ connector.id }}/propose-schema" class="ml-2">
-            <button type="submit"
+          <form method="post" action="/ui/connectors/{{ connector.id }}/propose-schema" class="ml-2"
+                x-data="{ submitting: false }" @submit="submitting = true">
+            <button type="submit" :class="submitting && 'opacity-50 pointer-events-none'"
                     class="text-xs bg-olive-900 hover:bg-stone-700 text-stone-100 py-1 px-2 border border-olive-900">
-              Propose Schema
+              <span x-show="!submitting">Propose Schema</span>
+              <span x-show="submitting" style="display:none" class="flex items-center gap-1">
+                <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Working...
+              </span>
             </button>
           </form>
           {% endif %}
@@ -55,16 +66,24 @@
           <a href="/ui/proposals" class="text-xs text-stone-500 hover:text-stone-300 ml-2">view →</a>
           {% elif confirmed_entity_type %}
           <span class="text-xs text-stone-500">No mapping</span>
-          <form method="post" action="/ui/connectors/{{ connector.id }}/propose-mapping" class="ml-2 flex items-center gap-2">
+          <form method="post" action="/ui/connectors/{{ connector.id }}/propose-mapping" class="ml-2 flex items-center gap-2"
+                x-data="{ submitting: false }" @submit="submitting = true">
             <select name="entity_type_id"
                     class="bg-stone-700 border border-olive-900 text-stone-100 px-2 py-1 text-xs focus:outline-none focus:border-emerald-600">
               {% for et in entity_types %}
               <option value="{{ et.id }}" {% if confirmed_entity_type and et.id == confirmed_entity_type.id %}selected{% endif %}>{{ et.name }}</option>
               {% endfor %}
             </select>
-            <button type="submit"
+            <button type="submit" :class="submitting && 'opacity-50 pointer-events-none'"
                     class="text-xs bg-olive-900 hover:bg-stone-700 text-stone-100 py-1 px-2 border border-olive-900">
-              Propose Mapping
+              <span x-show="!submitting">Propose Mapping</span>
+              <span x-show="submitting" style="display:none" class="flex items-center gap-1">
+                <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                Working...
+              </span>
             </button>
           </form>
           {% else %}
@@ -72,165 +91,170 @@
           {% endif %}
         </div>
 
-<!-- Last Sync -->
-<div class="flex items-center gap-3" id="pipeline-sync">
-  <span class="text-xs text-stone-400 w-28 shrink-0 uppercase tracking-wider">Sync</span>
-  {% if not confirmed_entity_type or not field_mapping %}
-  <span class="text-xs text-stone-500">Confirm schema and mapping first</span>
-  {% elif last_completed_job %}
-  <span class="text-xs text-emerald-400">
-    {{ last_completed_job.completed_at.strftime("%Y-%m-%d %H:%M") }}
-    — {{ last_completed_job.records_processed }} records
-  </span>
-  <form method="post" action="/ui/connectors/{{ connector.id }}/sync" class="ml-2">
-    <button type="submit"
-            class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white py-1 px-2 border border-emerald-600">
-      Sync Again
-    </button>
-  </form>
-  {% else %}
-  <span class="text-xs text-stone-500">Never synced</span>
-  <form method="post" action="/ui/connectors/{{ connector.id }}/sync" class="ml-2">
-    <button type="submit"
-            class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white py-1 px-2 border border-emerald-600">
-      Trigger Sync
-    </button>
-  </form>
-  {% endif %}
-</div>
-    <!-- Config section with edit toggle -->
-<div class="mb-6" x-data="{ editing: false }">
-  <div class="flex items-center justify-between mb-2">
-    <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase">Configuration</h2>
-    <button @click="editing = !editing"
-            class="text-xs text-emerald-500 hover:text-emerald-400"
-            x-text="editing ? 'Cancel' : 'Edit'">
-    </button>
-  </div>
- 
-  <!-- View mode -->
-  <div x-show="!editing" class="bg-stone-800 border border-olive-900 p-4">
-    {% for key, value in connector.config.items() %}
-    <div class="flex gap-4 text-sm border-b border-olive-900 py-1 last:border-b-0">
-      <span class="text-stone-400 w-40 shrink-0">{{ key }}</span>
-      <span class="text-stone-100 font-mono text-xs break-all">{{ value }}</span>
+        <!-- Last Sync -->
+        <div class="flex items-center gap-3" id="pipeline-sync">
+          <span class="text-xs text-stone-400 w-28 shrink-0 uppercase tracking-wider">Sync</span>
+          {% if not confirmed_entity_type or not field_mapping %}
+          <span class="text-xs text-stone-500">Confirm schema and mapping first</span>
+          {% elif last_completed_job %}
+          <span class="text-xs text-emerald-400">
+            {{ last_completed_job.completed_at.strftime("%Y-%m-%d %H:%M") }}
+            — {{ last_completed_job.records_processed }} records
+          </span>
+          <form method="post" action="/ui/connectors/{{ connector.id }}/sync" class="ml-2">
+            <button type="submit"
+                    class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white py-1 px-2 border border-emerald-600">
+              Sync Again
+            </button>
+          </form>
+          {% else %}
+          <span class="text-xs text-stone-500">Never synced</span>
+          <form method="post" action="/ui/connectors/{{ connector.id }}/sync" class="ml-2">
+            <button type="submit"
+                    class="text-xs bg-emerald-700 hover:bg-emerald-600 text-white py-1 px-2 border border-emerald-600">
+              Trigger Sync
+            </button>
+          </form>
+          {% endif %}
+        </div>
+
+      </div>
+
+      <div class="w-48 shrink-0 border-l border-olive-900 pl-4 flex flex-col justify-center">
+        <h3 class="text-xs font-bold text-stone-300 uppercase tracking-wider mb-1">Proposals</h3>
+        <a href="/ui/proposals" class="text-emerald-600 hover:text-emerald-500 text-xs">View proposals for this connector →</a>
+      </div>
     </div>
-    {% endfor %}
   </div>
- 
-  <!-- Edit mode -->
-  <div x-show="editing" style="display:none">
-    <form method="post" action="/ui/connectors/{{ connector.id }}/edit"
-          class="bg-stone-800 border border-olive-900 p-4 space-y-3">
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Name *</label>
-        <input type="text" name="name" value="{{ connector.name }}" required
-               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-      </div>
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Base URL *</label>
-        <input type="text" name="base_url" value="{{ connector.config.get('base_url', '') }}" required
-               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-      </div>
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Endpoint</label>
-        <input type="text" name="endpoint" value="{{ connector.config.get('endpoint', '') }}"
-               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-      </div>
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Auth Type</label>
-        <select name="auth_type"
-                class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-          {% set current_auth = connector.config.get('auth', {}).get('type', connector.config.get('auth_type', 'none')) %}
-          <option value="none" {% if current_auth == 'none' %}selected{% endif %}>None</option>
-          <option value="bearer" {% if current_auth == 'bearer' %}selected{% endif %}>Bearer Token</option>
-          <option value="api_key" {% if current_auth == 'api_key' %}selected{% endif %}>API Key</option>
-          <option value="basic" {% if current_auth == 'basic' %}selected{% endif %}>Basic Auth</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Records JSONPath</label>
-        <input type="text" name="records_jsonpath"
-               value="{{ connector.config.get('records_jsonpath', connector.config.get('record_path', '$.data')) }}"
-               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-      </div>
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Pagination Strategy</label>
-        {% set current_pag = connector.config.get('pagination', {}).get('strategy', connector.config.get('pagination_strategy', 'none')) %}
-        <select name="pagination_strategy"
-                class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-          <option value="none" {% if current_pag == 'none' %}selected{% endif %}>None</option>
-          <option value="offset" {% if current_pag == 'offset' %}selected{% endif %}>Offset</option>
-          <option value="cursor" {% if current_pag == 'cursor' %}selected{% endif %}>Cursor</option>
-          <option value="link_header" {% if current_pag == 'link_header' %}selected{% endif %}>Link Header</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Page Size</label>
-        <input type="text" name="page_size"
-               value="{{ connector.config.get('pagination', {}).get('page_size', '') }}"
-               placeholder="e.g. 10"
-               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-      </div>
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Page Param</label>
-        <input type="text" name="page_param"
-               value="{{ connector.config.get('pagination', {}).get('page_param', 'page') }}"
-               class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-      </div>
-      <button type="submit"
-              class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-4 border border-emerald-600">
-        Save Configuration
+
+  <!-- Config section with edit toggle -->
+  <div class="mb-6" x-data="{ editing: false }">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase">Configuration</h2>
+      <button @click="editing = !editing"
+              class="text-xs text-emerald-500 hover:text-emerald-400"
+              x-text="editing ? 'Cancel' : 'Edit'">
       </button>
-    </form>
+    </div>
+
+    <!-- View mode -->
+    <div x-show="!editing" class="bg-stone-800 border border-olive-900 p-4">
+      {% for key, value in connector.config.items() %}
+      <div class="flex gap-4 text-sm border-b border-olive-900 py-1 last:border-b-0">
+        <span class="text-stone-400 w-40 shrink-0">{{ key }}</span>
+        <span class="text-stone-100 font-mono text-xs break-all">{{ value }}</span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Edit mode -->
+    <div x-show="editing" style="display:none">
+      <form method="post" action="/ui/connectors/{{ connector.id }}/edit"
+            class="bg-stone-800 border border-olive-900 p-4 space-y-3">
+        <div>
+          <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Name *</label>
+          <input type="text" name="name" value="{{ connector.name }}" required
+                 class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+        </div>
+        <div>
+          <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Base URL *</label>
+          <input type="text" name="base_url" value="{{ connector.config.get('base_url', '') }}" required
+                 class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+        </div>
+        <div>
+          <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Endpoint</label>
+          <input type="text" name="endpoint" value="{{ connector.config.get('endpoint', '') }}"
+                 class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+        </div>
+        <div>
+          <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Auth Type</label>
+          <select name="auth_type"
+                  class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+            {% set current_auth = connector.config.get('auth', {}).get('type', connector.config.get('auth_type', 'none')) %}
+            <option value="none" {% if current_auth == 'none' %}selected{% endif %}>None</option>
+            <option value="bearer" {% if current_auth == 'bearer' %}selected{% endif %}>Bearer Token</option>
+            <option value="api_key" {% if current_auth == 'api_key' %}selected{% endif %}>API Key</option>
+            <option value="basic" {% if current_auth == 'basic' %}selected{% endif %}>Basic Auth</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Records JSONPath</label>
+          <input type="text" name="records_jsonpath"
+                 value="{{ connector.config.get('records_jsonpath', connector.config.get('record_path', '$.data')) }}"
+                 class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+        </div>
+        <div>
+          <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Pagination Strategy</label>
+          {% set current_pag = connector.config.get('pagination', {}).get('strategy', connector.config.get('pagination_strategy', 'none')) %}
+          <select name="pagination_strategy"
+                  class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+            <option value="none" {% if current_pag == 'none' %}selected{% endif %}>None</option>
+            <option value="offset" {% if current_pag == 'offset' %}selected{% endif %}>Offset</option>
+            <option value="cursor" {% if current_pag == 'cursor' %}selected{% endif %}>Cursor</option>
+            <option value="link_header" {% if current_pag == 'link_header' %}selected{% endif %}>Link Header</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Page Size</label>
+          <input type="text" name="page_size"
+                 value="{{ connector.config.get('pagination', {}).get('page_size', '') }}"
+                 placeholder="e.g. 10"
+                 class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+        </div>
+        <div>
+          <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Page Param</label>
+          <input type="text" name="page_param"
+                 value="{{ connector.config.get('pagination', {}).get('page_param', 'page') }}"
+                 class="w-full bg-stone-700 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
+        </div>
+        <button type="submit"
+                class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-4 border border-emerald-600">
+          Save Configuration
+        </button>
+      </form>
+    </div>
   </div>
-</div>
 
   <!-- Ingestion Jobs -->
-<div>
-  <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase mb-2">Ingestion Jobs</h2>
-  <div hx-get="/ui/connectors/{{ connector.id }}/jobs"
-       hx-trigger="every 3s"
-       hx-swap="innerHTML">
-    {% include "connectors/_jobs_table.html" %}
-  </div>
-</div>
-
-  <!-- Sidebar -->
-  <div class="w-72 shrink-0 space-y-4">
-    <div class="bg-stone-800 border border-olive-900 p-4">
-      <h3 class="text-sm font-bold text-stone-100 mb-2">Proposals</h3>
-      <a href="/ui/proposals" class="text-emerald-600 hover:text-emerald-500 text-sm">View proposals for this connector →</a>
+  <div class="mb-6">
+    <h2 class="text-sm font-bold tracking-wide text-stone-300 uppercase mb-2">Ingestion Jobs</h2>
+    {% set has_running_job = jobs and jobs[0].status in ("running", "pending") %}
+    <div id="jobs-container"
+         {% if has_running_job %}
+           hx-get="/ui/connectors/{{ connector.id }}/jobs"
+           hx-trigger="every 1s"
+           hx-swap="innerHTML"
+         {% endif %}>
+      {% include "connectors/_jobs_table.html" %}
     </div>
+  </div>
 
-    <!-- Danger zone -->
-    <div class="bg-stone-800 border border-red-900 p-4" x-data="connectorDelete('{{ connector.id }}')">
-      <h3 class="text-sm font-bold text-red-400 mb-3">Danger Zone</h3>
+  <!-- Danger zone -->
+  <div class="w-72 bg-stone-800 border border-red-900 p-4" x-data="connectorDelete('{{ connector.id }}')">
+    <h3 class="text-sm font-bold text-red-400 mb-3">Danger Zone</h3>
 
-      <button x-show="!showConfirm"
-              @click="showConfirm = true"
-              class="w-full text-red-400 text-sm border border-red-800 py-2 px-3 hover:bg-red-950 text-left">
-        Delete Connector
-      </button>
+    <button x-show="!showConfirm"
+            @click="showConfirm = true"
+            class="w-full text-red-400 text-sm border border-red-800 py-2 px-3 hover:bg-red-950 text-left">
+      Delete Connector
+    </button>
 
-      <div x-show="showConfirm" style="display:none" class="space-y-3">
-        <p class="text-stone-300 text-xs leading-relaxed">
-          This will remove the connector and all its ingestion history. Entities created by this connector will not be deleted.
-        </p>
-        <div class="flex gap-2">
-          <button @click="doDelete()"
-                  class="px-3 py-1 text-red-400 border border-red-700 text-xs hover:bg-red-950">
-            Confirm Delete
-          </button>
-          <button @click="showConfirm = false"
-                  class="px-3 py-1 text-stone-400 border border-stone-600 text-xs hover:bg-stone-600">
-            Cancel
-          </button>
-        </div>
+    <div x-show="showConfirm" style="display:none" class="space-y-3">
+      <p class="text-stone-300 text-xs leading-relaxed">
+        This will remove the connector and all its ingestion history. Entities created by this connector will not be deleted.
+      </p>
+      <div class="flex gap-2">
+        <button @click="doDelete()"
+                class="px-3 py-1 text-red-400 border border-red-700 text-xs hover:bg-red-950">
+          Confirm Delete
+        </button>
+        <button @click="showConfirm = false"
+                class="px-3 py-1 text-stone-400 border border-stone-600 text-xs hover:bg-stone-600">
+          Cancel
+        </button>
       </div>
     </div>
   </div>
-
 </div>
 
 <script>
