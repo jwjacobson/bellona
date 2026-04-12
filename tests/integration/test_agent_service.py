@@ -197,7 +197,7 @@ async def test_confirm_mapping_proposal_creates_field_mapping(
     assert field_mapping.entity_type_id == et.id
 
     await db_session.refresh(proposal)
-    assert proposal.status == "approved"
+    assert proposal.status == "confirmed"
 
 
 async def test_confirm_mapping_proposal_wrong_type(db_session: AsyncSession) -> None:
@@ -247,7 +247,7 @@ async def test_confirm_schema_proposal_creates_entity_type(
     assert len(entity_type.property_definitions) == 2
 
     await db_session.refresh(proposal)
-    assert proposal.status == "approved"
+    assert proposal.status == "confirmed"
 
 
 async def test_confirm_schema_proposal_wrong_type(db_session: AsyncSession) -> None:
@@ -265,10 +265,10 @@ async def test_confirm_schema_proposal_wrong_type(db_session: AsyncSession) -> N
         await confirm_schema_proposal(db_session, proposal.id)
 
 
-async def test_confirm_already_approved_proposal(db_session: AsyncSession) -> None:
+async def test_confirm_already_confirmed_proposal(db_session: AsyncSession) -> None:
     proposal = AgentProposal(
         proposal_type="mapping",
-        status="approved",
+        status="confirmed",
         content={"mappings": [], "overall_confidence": 0.5, "notes": ""},
         confidence=0.5,
     )
@@ -302,10 +302,10 @@ async def test_reject_nonexistent_proposal(db_session: AsyncSession) -> None:
         await reject_proposal(db_session, uuid.uuid4())
 
 
-async def test_reject_already_approved_proposal(db_session: AsyncSession) -> None:
+async def test_reject_already_confirmed_proposal(db_session: AsyncSession) -> None:
     proposal = AgentProposal(
         proposal_type="mapping",
-        status="approved",
+        status="confirmed",
         content={"mappings": [], "overall_confidence": 0.5, "notes": ""},
         confidence=0.5,
     )
@@ -321,16 +321,16 @@ async def test_reject_already_approved_proposal(db_session: AsyncSession) -> Non
 async def test_list_proposals_returns_only_proposed(db_session: AsyncSession) -> None:
     base_content = {"mappings": [], "overall_confidence": 0.5, "notes": ""}
     proposed = AgentProposal(proposal_type="mapping", status="proposed", content=base_content)
-    approved = AgentProposal(proposal_type="mapping", status="approved", content=base_content)
+    confirmed = AgentProposal(proposal_type="mapping", status="confirmed", content=base_content)
     rejected = AgentProposal(proposal_type="entity_type", status="rejected", content=base_content)
-    db_session.add_all([proposed, approved, rejected])
+    db_session.add_all([proposed, confirmed, rejected])
     await db_session.flush()
 
     proposals = await list_proposals(db_session)
 
     ids = [p.id for p in proposals]
     assert proposed.id in ids
-    assert approved.id not in ids
+    assert confirmed.id not in ids
     assert rejected.id not in ids
 
 
