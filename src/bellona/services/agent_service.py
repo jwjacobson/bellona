@@ -551,15 +551,6 @@ async def confirm_discovery_proposal(
     proposal.status = "confirmed"
     await db.flush()
 
-    # Queue schema proposals for each new connector (non-fatal)
-    for connector in connectors:
-        try:
-            await propose_schema(db, connector.id)
-        except ProposalError:
-            logger.warning(
-                "schema proposal auto-queue failed",
-                connector_id=str(connector.id),
-            )
 
     logger.info(
         "discovery proposal confirmed",
