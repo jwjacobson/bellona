@@ -51,23 +51,15 @@ just run
 In a web browser, navigate to `http://127.0.0.1:8000`. This will take you to the **Ontology** page, which will be empty if you haven't discovered any data.
 
 #### Parts of the app
-##### Ontology
-Displays discovered entity types and their descriptions, as well as detailed field-by-field breakdowns and entity relationships.
 
-##### Explorer
-Displays tables of different types of ingested entities.
-
-##### Connectors
-Displays configured connectors and provides an interface for creating new ones. Your first stop if you're new to Bellona!
-
-##### Proposals
-Displays proposals by the Discovery, Schema, and Mapping agents for user approval.
-
-##### Query
-Provides a natural language interface to query ingested data.
-
-##### Graph
-Visually represents ingested entities and their relationships.
+| |  |
+|-|-|
+| **Ontology** | Browse discovered entity types, field definitions, and relationships. |
+| **Explorer** | View ingested entities in tabular form, organized by type. |
+| **Connectors** | Configure data sources (CSV or REST API). Start here if you're new to Bellona. |
+| **Proposals** | Review and confirm proposals from the Discovery, Schema, and Mapping agents. |
+| **Query** | Ask questions about your data in natural language. |
+| **Graph** | Visualize entities and their relationships graphically. |
 
 #### Ingesting data
 Bellona can currently ingest data from CSVs and REST APIs. To create a connector, upload a CSV or enter an API base url in the appropriate form on the **Connectors** page.
