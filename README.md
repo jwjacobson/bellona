@@ -6,13 +6,15 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Bellona is a universal data ontology platform inspired by tools like Palantir -- built for developers who want to ingest heterogeneous data, map it to a dynamic semantic layer, and query it meaningfully. You define an ontology at runtime (not in code), AI agents propose how your data maps to it, and you confirm or reject those proposals before anything is stored. The current implementation is built with FastAPI, SQLAlchemy (async), PostgreSQL with JSONB, and Agno for multi-agent orchestration, with an htmx/Alpine.js frontend planned for a future phase.
+Bellona is a universal data ontology platform inspired by tools like Palantir -- built for developers who want to ingest heterogeneous data, map it to a dynamic semantic layer, and query it meaningfully. You define an ontology at runtime (not in code), AI agents propose how your data maps to it, and you confirm or reject those proposals before anything is stored. It is built with FastAPI, SQLAlchemy (async), PostgreSQL with JSONB, and Agno for multi-agent orchestration, with an htmx/Alpine.js frontend.
 
 ## Setup
+At present, Bellona is not deployed to the web, so you will have to run it locally.
+
 ### Prerequisites
 - PostgreSQL running locally
 - Python 3.14+
-- [uv](https://docs.astral.sh/uv/getting-started/installation/) installed
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) installed (not strictly necessary, but these instructions assume it)
 - A valid [Claude API key](https://platform.claude.com/dashboard)
 
 ### Installation
@@ -36,21 +38,64 @@ psql -U postgres -c "CREATE DATABASE bellona OWNER bellona;"
 uv run alembic upgrade head
 ```
 
-## Manually calling the endpoints
-
-Currently, Bellona has been built through Phase 3 of the [development roadmap](SPEC.md#10-development-roadmap), which means two things:
-1. You can test its current functionality by uploading a csv and transforming it into queryable data; but
-2. You have to call each endpoint manually because there's no UI yet.
-
-To try it out (using the provided dummy `companies.csv` as input):
-
-### 0. Start the server
+## Running
+Start the server:
 ```bash
 uv run fastapi dev src/bellona/main.py
-# Or, if you have just installed, `just run`
+
+# Or, if you have just installed:
+just run
 ```
 
-Then, in another terminal:
+### Using the web interface
+In a web browser, navigate to `http://127.0.0.1:8000`. This will take you to the **Ontology** page, which will be empty if you haven't discovered any data.
+
+#### Parts of the app
+##### Ontology
+Displays discovered entity types and their descriptions, as well as detailed field-by-field breakdowns and entity relationships.
+
+##### Explorer
+Displays tables of different types of ingested entities.
+
+##### Connectors
+Displays configured connectors and provides an interface for creating new ones. Your first stop if you're new to Bellona!
+
+##### Proposals
+Displays proposals by the Discovery, Schema, and Mapping agents for user approval.
+
+##### Query
+Provides a natural language interface to query ingested data.
+
+##### Graph
+Visually represents ingested entities and their relationships.
+
+#### Ingesting data
+Bellona can currently ingest data from CSVs and REST APIs. To create a connector, upload a CSV or enter an API base url in the appropriate form on the **Connectors** page.
+
+##### CSV connector
+After you upload a CSV, you will be taken to the new connector's details page.
+
+1. Click `Propose schema`; once a proposal has been made, follow the link to the Proposals page.
+2. `Confirm` the schema proposal; you will be taken back to the connector details page.
+3. Select the appropriate schema and click `Propose mapping`; once a proposal has been made, follow the link to the Proposals page.
+4. `Confirm` the mapping proposal; you will be taken back to the connector details page.
+5. Click `Trigger sync` to ingest the data from the file. You can now explore your data in the Explorer.
+
+##### REST API connector
+1. Enter the API's base url in the `API BASE URL` field, press `Discover API`, and wait for the Discovery agent to do its work.
+
+> [!NOTE]
+> The Discovery agent takes a long time (~2 minutes on the Star Wars API); if you know the configuration details of your desired API, you may wish to configure the connector manually in the dropdown below the Discover API button. Manual configuration skips the Discovery agent step.
+
+2. Follow the link to the Proposals page and confirm the Discovery proposal; you will be redirected to the **Connectors** page.
+3. Follow the `details` link for the connector of your choice. From here, the procedure continues from step 1 in the CSV connector instructions above.
+
+### Manually calling the endpoints
+
+You can also call the endpoints manually, though the process is rather involved.
+
+To try it out (using `curl` and the provided dummy `companies.csv` as input):
+
 ### 1. Upload a CSV
 ```bash
 curl -X POST http://localhost:8000/api/v1/connectors/csv/upload \
