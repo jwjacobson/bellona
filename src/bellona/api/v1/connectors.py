@@ -2,7 +2,14 @@ import uuid
 from pathlib import Path
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    UploadFile,
+    status,
+)
 from fastapi import Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -52,7 +59,9 @@ async def create_connector_endpoint(
 
 
 @router.get("/connectors", response_model=list[ConnectorRead])
-async def list_connectors_endpoint(db: AsyncSession = Depends(get_db)) -> list[ConnectorRead]:
+async def list_connectors_endpoint(
+    db: AsyncSession = Depends(get_db),
+) -> list[ConnectorRead]:
     return await list_connectors(db)  # type: ignore[return-value]
 
 
@@ -62,7 +71,9 @@ async def get_connector_endpoint(
 ) -> ConnectorRead:
     connector = await get_connector(db, connector_id)
     if connector is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found"
+        )
     return connector  # type: ignore[return-value]
 
 
@@ -104,7 +115,9 @@ async def discover_schema_endpoint(
 ) -> SchemaDiscoveryRead:
     connector = await get_connector(db, connector_id)
     if connector is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found"
+        )
 
     instance = _create_connector_instance(connector)
     schema = await instance.discover_schema()
@@ -143,7 +156,9 @@ async def trigger_sync(
 ) -> IngestionJobRead:
     connector = await get_connector(db, connector_id)
     if connector is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found"
+        )
 
     job = await create_ingestion_job(db, connector_id)
     await db.commit()
@@ -153,9 +168,7 @@ async def trigger_sync(
     return job  # type: ignore[return-value]
 
 
-@router.delete(
-    "/connectors/{connector_id}", status_code=status.HTTP_204_NO_CONTENT
-)
+@router.delete("/connectors/{connector_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_connector_endpoint(
     connector_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -182,7 +195,8 @@ async def patch_connector_endpoint(
         )
     connector = await patch_connector(db, connector, data)
     await db.commit()
-    return connector 
+    return connector
+
 
 # ── Field Mappings ────────────────────────────────────────────────────────────
 

@@ -63,6 +63,7 @@ class ConnectorPatch(BaseModel):
     name: str | None = None
     config: dict[str, Any] | None = None
 
+
 # ── Ingestion Job ─────────────────────────────────────────────────────────────
 
 

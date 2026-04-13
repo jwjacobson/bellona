@@ -1,4 +1,5 @@
 """Query Agent: translates natural language questions into structured EntityQuery objects."""
+
 from typing import Any
 
 import structlog

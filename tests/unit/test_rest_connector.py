@@ -27,7 +27,9 @@ def make_mock_client(*responses: httpx.Response) -> AsyncMock:
 _DUMMY_REQUEST = httpx.Request("GET", "https://api.example.com/users")
 
 
-def make_response(data: dict, status_code: int = 200, headers: dict | None = None) -> httpx.Response:
+def make_response(
+    data: dict, status_code: int = 200, headers: dict | None = None
+) -> httpx.Response:
     return httpx.Response(
         status_code, json=data, headers=headers or {}, request=_DUMMY_REQUEST
     )
@@ -123,8 +125,12 @@ async def test_discover_schema_offset_fetches_multiple_pages() -> None:
         },
     }
     client = make_mock_client(
-        make_response({"data": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}),  # page 1 (full)
-        make_response({"data": [{"id": 3, "email": "c@x.com"}]}),  # page 2 (short → stop)
+        make_response(
+            {"data": [{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]}
+        ),  # page 1 (full)
+        make_response(
+            {"data": [{"id": 3, "email": "c@x.com"}]}
+        ),  # page 2 (short → stop)
     )
     connector = RESTConnector(uuid.uuid4(), config, "test", _client=client)
     schema = await connector.discover_schema()
@@ -170,7 +176,9 @@ async def test_discover_schema_offset_caps_at_3_pages() -> None:
         make_response({"data": [{"id": 1}, {"id": 2}]}),  # page 1
         make_response({"data": [{"id": 3}, {"id": 4}]}),  # page 2
         make_response({"data": [{"id": 5}, {"id": 6}]}),  # page 3
-        make_response({"data": [{"id": 7}, {"id": 8}]}),  # page 4 — should NOT be fetched
+        make_response(
+            {"data": [{"id": 7}, {"id": 8}]}
+        ),  # page 4 — should NOT be fetched
     )
     connector = RESTConnector(uuid.uuid4(), config, "test", _client=client)
     schema = await connector.discover_schema()
@@ -346,7 +354,9 @@ async def test_auth_none_sends_no_auth_header() -> None:
 
 
 async def test_get_metadata() -> None:
-    connector = RESTConnector(uuid.uuid4(), BASE_CONFIG, "rest-api", _client=AsyncMock())
+    connector = RESTConnector(
+        uuid.uuid4(), BASE_CONFIG, "rest-api", _client=AsyncMock()
+    )
     meta = await connector.get_metadata()
     assert meta.status == "active"
     assert meta.source_name == "rest-api"

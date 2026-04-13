@@ -1,4 +1,5 @@
 """Query service: translates EntityQuery into SQLAlchemy and executes it."""
+
 from __future__ import annotations
 
 import math
@@ -91,7 +92,9 @@ async def query_entities(db: AsyncSession, query: EntityQuery) -> EntityPage:
             col = cast(col, Numeric)
         elif sort_clause.data_type == "date":
             col = cast(col, Date)
-        stmt = stmt.order_by(col.desc() if sort_clause.direction == "desc" else col.asc())
+        stmt = stmt.order_by(
+            col.desc() if sort_clause.direction == "desc" else col.asc()
+        )
 
     if not query.sort:
         stmt = stmt.order_by(Entity.created_at.desc())

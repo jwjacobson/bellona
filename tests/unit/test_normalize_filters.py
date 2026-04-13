@@ -1,9 +1,9 @@
 """Unit tests for the _normalize_filters defensive filter normalization layer."""
+
 from bellona.services.agent_service import _normalize_filters
 
 
 class TestNormalizeFilters:
-
     def test_already_correct_condition(self):
         raw = {"property": "name", "operator": "eq", "value": "Alice"}
         assert _normalize_filters(raw) == raw

@@ -53,8 +53,12 @@ async def test_create_connector_invalid_type(client: AsyncClient) -> None:
 
 
 async def test_list_connectors(client: AsyncClient, db_session: AsyncSession) -> None:
-    await create_connector(db_session, "csv", "list-conn-1", {"file_path": "/tmp/a.csv"})
-    await create_connector(db_session, "csv", "list-conn-2", {"file_path": "/tmp/b.csv"})
+    await create_connector(
+        db_session, "csv", "list-conn-1", {"file_path": "/tmp/a.csv"}
+    )
+    await create_connector(
+        db_session, "csv", "list-conn-2", {"file_path": "/tmp/b.csv"}
+    )
     await db_session.flush()
 
     response = await client.get("/api/v1/connectors")
@@ -103,7 +107,9 @@ async def test_csv_upload(client: AsyncClient, tmp_path: Path) -> None:
 # ── GET /connectors/{id}/schema ───────────────────────────────────────────────
 
 
-async def test_discover_schema(client: AsyncClient, db_session: AsyncSession, tmp_path: Path) -> None:
+async def test_discover_schema(
+    client: AsyncClient, db_session: AsyncSession, tmp_path: Path
+) -> None:
     csv_file = tmp_path / "schema_test.csv"
     csv_file.write_text("city,population\nBoston,675000\nSeattle,750000\n")
     connector = await create_connector(
@@ -176,7 +182,9 @@ async def test_trigger_sync_creates_job(
         db_session,
         connector_id=connector.id,
         entity_type_id=et.id,
-        mapping_config={"mappings": [{"source_field": "name", "target_property": "name"}]},
+        mapping_config={
+            "mappings": [{"source_field": "name", "target_property": "name"}]
+        },
     )
     await db_session.flush()
 
@@ -195,9 +203,7 @@ async def test_trigger_sync_not_found(client: AsyncClient) -> None:
 # ── GET /ingestion-jobs/{id} ──────────────────────────────────────────────────
 
 
-async def test_get_ingestion_job(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_get_ingestion_job(client: AsyncClient, db_session: AsyncSession) -> None:
     connector = await create_connector(
         db_session, "csv", "job-conn", {"file_path": "/tmp/job.csv"}
     )
@@ -242,7 +248,9 @@ async def test_full_csv_ingest_pipeline_via_api(
         EntityTypeCreate(
             name=f"Person-API-{uuid.uuid4().hex[:6]}",
             properties=[
-                PropertyDefinitionCreate(name="name", data_type="string", required=True),
+                PropertyDefinitionCreate(
+                    name="name", data_type="string", required=True
+                ),
                 PropertyDefinitionCreate(name="age", data_type="integer"),
             ],
         ),
@@ -306,6 +314,7 @@ async def test_sync_without_mapping_fails_job(
 
 # ── PATCH /connectors/{id} ────────────────────────────────────────────────────
 
+
 async def test_patch_connector_name(client: AsyncClient) -> None:
     create_resp = await client.post(
         "/api/v1/connectors",
@@ -327,8 +336,8 @@ async def test_patch_connector_name(client: AsyncClient) -> None:
     )
     assert response.status_code == 200
     assert response.json()["name"] == "PatchedName"
- 
- 
+
+
 async def test_patch_connector_config(client: AsyncClient) -> None:
     create_resp = await client.post(
         "/api/v1/connectors",
@@ -358,16 +367,16 @@ async def test_patch_connector_config(client: AsyncClient) -> None:
     data = response.json()
     assert data["config"]["base_url"] == "https://new.example.com"
     assert data["config"]["pagination"]["page_size"] == 20
- 
- 
+
+
 async def test_patch_connector_not_found(client: AsyncClient) -> None:
     response = await client.patch(
         f"/api/v1/connectors/{uuid.uuid4()}",
         json={"name": "Ghost"},
     )
     assert response.status_code == 404
- 
- 
+
+
 async def test_patch_connector_no_changes(client: AsyncClient) -> None:
     create_resp = await client.post(
         "/api/v1/connectors",
@@ -389,4 +398,3 @@ async def test_patch_connector_no_changes(client: AsyncClient) -> None:
     )
     assert response.status_code == 200
     assert response.json()["name"] == "PatchNoOp"
- 

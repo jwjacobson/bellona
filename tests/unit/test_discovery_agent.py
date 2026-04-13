@@ -1,4 +1,5 @@
 """Unit tests for DiscoveryAgent. Agno/LLM calls are fully mocked."""
+
 from unittest.mock import AsyncMock
 
 import pytest
@@ -36,8 +37,18 @@ MOCK_PROPOSAL = DiscoveryProposalContent(
             ),
             sample_record={"name": "Luke Skywalker", "height": "172"},
             schema_summary=[
-                FieldSummary(name="name", inferred_type="string", required=True, sample_values=["Luke Skywalker"]),
-                FieldSummary(name="height", inferred_type="string", required=True, sample_values=["172"]),
+                FieldSummary(
+                    name="name",
+                    inferred_type="string",
+                    required=True,
+                    sample_values=["Luke Skywalker"],
+                ),
+                FieldSummary(
+                    name="height",
+                    inferred_type="string",
+                    required=True,
+                    sample_values=["172"],
+                ),
             ],
             record_count_estimate=82,
         ),

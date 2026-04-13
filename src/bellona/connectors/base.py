@@ -20,6 +20,7 @@ class SchemaField:
     sample_values: list[Any] = field(default_factory=list)
     null_sentinels: list[str] = field(default_factory=list)
 
+
 @dataclass
 class SchemaDiscovery:
     fields: list[SchemaField]

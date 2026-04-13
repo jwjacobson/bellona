@@ -3,6 +3,7 @@
 
 All agent calls use the _mock_result injection pattern (no patch).
 """
+
 import uuid
 
 import pytest
@@ -65,14 +66,25 @@ async def test_full_pipeline(
         entity_type_name=et_name,
         description="A business entity parsed from the companies CSV.",
         properties=[
-            ProposedPropertyDefinition(name="name", data_type="string", required=True,
-                                       description="Company name"),
-            ProposedPropertyDefinition(name="founded_year", data_type="integer",
-                                       description="Year the company was founded"),
-            ProposedPropertyDefinition(name="employee_count", data_type="integer",
-                                       description="Number of employees"),
-            ProposedPropertyDefinition(name="status", data_type="string",
-                                       description="Operational status"),
+            ProposedPropertyDefinition(
+                name="name",
+                data_type="string",
+                required=True,
+                description="Company name",
+            ),
+            ProposedPropertyDefinition(
+                name="founded_year",
+                data_type="integer",
+                description="Year the company was founded",
+            ),
+            ProposedPropertyDefinition(
+                name="employee_count",
+                data_type="integer",
+                description="Number of employees",
+            ),
+            ProposedPropertyDefinition(
+                name="status", data_type="string", description="Operational status"
+            ),
         ],
         reasoning="The CSV contains standard company fields.",
         confidence=0.95,
@@ -191,9 +203,7 @@ async def test_full_pipeline(
     recent_names = {item["properties"]["name"] for item in query_data["items"]}
     assert recent_names == {"TechStart Inc", "NewWave Co"}
 
-    browse_resp = await client.get(
-    f"/api/v1/entities?entity_type_id={entity_type_id}"
-)
+    browse_resp = await client.get(f"/api/v1/entities?entity_type_id={entity_type_id}")
     assert browse_resp.status_code == 200
     assert browse_resp.json()["total"] == 5
 

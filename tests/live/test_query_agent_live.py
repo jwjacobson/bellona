@@ -6,6 +6,7 @@ Run with:
 
     uv run pytest tests/live/test_query_agent_live.py --live
 """
+
 import uuid
 
 import pytest
@@ -40,12 +41,37 @@ def _model() -> str:
 # ── Seed data ─────────────────────────────────────────────────────────────────
 
 _COMPANIES = [
-    {"name": "AnchorTech",   "founded_year": 2010, "employee_count": 320, "status": "active"},
-    {"name": "NovaSpark",    "founded_year": 2017, "employee_count": 85,  "status": "active"},
-    {"name": "BluePeak",     "founded_year": 2020, "employee_count": 12,  "status": "active"},
-    {"name": "RocketWare",   "founded_year": 2019, "employee_count": 140, "status": "active"},
-    {"name": "OldVentures",  "founded_year": 2003, "employee_count": 600, "status": "inactive"},
-    {"name": "SwiftIO",      "founded_year": 2022, "employee_count": 7,   "status": "active"},
+    {
+        "name": "AnchorTech",
+        "founded_year": 2010,
+        "employee_count": 320,
+        "status": "active",
+    },
+    {
+        "name": "NovaSpark",
+        "founded_year": 2017,
+        "employee_count": 85,
+        "status": "active",
+    },
+    {
+        "name": "BluePeak",
+        "founded_year": 2020,
+        "employee_count": 12,
+        "status": "active",
+    },
+    {
+        "name": "RocketWare",
+        "founded_year": 2019,
+        "employee_count": 140,
+        "status": "active",
+    },
+    {
+        "name": "OldVentures",
+        "founded_year": 2003,
+        "employee_count": 600,
+        "status": "inactive",
+    },
+    {"name": "SwiftIO", "founded_year": 2022, "employee_count": 7, "status": "active"},
 ]
 
 _COMPANY_ONTOLOGY = [
@@ -53,16 +79,37 @@ _COMPANY_ONTOLOGY = [
         "name": "Company",
         "description": "A business entity.",
         "properties": [
-            {"name": "name",           "data_type": "string",  "required": True,  "description": "Company name"},
-            {"name": "founded_year",   "data_type": "integer", "required": False, "description": "Year the company was founded"},
-            {"name": "employee_count", "data_type": "integer", "required": False, "description": "Number of employees"},
-            {"name": "status",         "data_type": "string",  "required": False, "description": "active or inactive"},
+            {
+                "name": "name",
+                "data_type": "string",
+                "required": True,
+                "description": "Company name",
+            },
+            {
+                "name": "founded_year",
+                "data_type": "integer",
+                "required": False,
+                "description": "Year the company was founded",
+            },
+            {
+                "name": "employee_count",
+                "data_type": "integer",
+                "required": False,
+                "description": "Number of employees",
+            },
+            {
+                "name": "status",
+                "data_type": "string",
+                "required": False,
+                "description": "active or inactive",
+            },
         ],
     }
 ]
 
 
 # ── Session-scoped DB fixture ─────────────────────────────────────────────────
+
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def seeded_company_session():
@@ -86,10 +133,16 @@ async def seeded_company_session():
                 EntityTypeCreate(
                     name="Company",
                     properties=[
-                        PropertyDefinitionCreate(name="name",           data_type="string",  required=True),
-                        PropertyDefinitionCreate(name="founded_year",   data_type="integer"),
-                        PropertyDefinitionCreate(name="employee_count", data_type="integer"),
-                        PropertyDefinitionCreate(name="status",         data_type="string"),
+                        PropertyDefinitionCreate(
+                            name="name", data_type="string", required=True
+                        ),
+                        PropertyDefinitionCreate(
+                            name="founded_year", data_type="integer"
+                        ),
+                        PropertyDefinitionCreate(
+                            name="employee_count", data_type="integer"
+                        ),
+                        PropertyDefinitionCreate(name="status", data_type="string"),
                     ],
                 ),
             )
@@ -159,6 +212,7 @@ async def test_live_query_agent_references_valid_properties(
 
     # If any filters were generated, they should reference valid properties.
     if result.filters:
+
         def _collect_properties(node: dict) -> set[str]:
             if "property" in node:
                 return {node["property"]}
@@ -192,10 +246,10 @@ async def test_live_query_agent_executes_against_db(
     if result.filters is not None:
         try:
             filters = FilterGroup.model_validate(result.filters)
-        except (ValidationError, Exception):
+        except ValidationError, Exception:
             try:
                 filters = FilterCondition.model_validate(result.filters)
-            except (ValidationError, Exception):
+            except ValidationError, Exception:
                 filters = None  # unparseable filter — run without it
 
     sort = [

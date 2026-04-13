@@ -1,4 +1,5 @@
 """Schema Agent: proposes new entity types when source data doesn't fit existing ontology."""
+
 from typing import Any
 
 import structlog
@@ -31,7 +32,11 @@ def _build_prompt(
 ) -> str:
     schema_lines = []
     for f in schema.fields:
-        samples = ", ".join(str(v) for v in f.sample_values[:3]) if f.sample_values else "none"
+        samples = (
+            ", ".join(str(v) for v in f.sample_values[:3])
+            if f.sample_values
+            else "none"
+        )
         schema_lines.append(
             f"  - {f.name} (type: {f.inferred_type}, nullable: {f.nullable}, samples: [{samples}])"
         )

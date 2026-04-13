@@ -1,4 +1,5 @@
 """Unit tests for QueryAgent. Agno/LLM calls are fully mocked."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -38,7 +39,9 @@ async def test_query_agent_returns_result() -> None:
     agent = QueryAgent(api_key="test-key")
 
     with patch.object(agent, "_run_agent", new=AsyncMock(return_value=MOCK_RESULT)):
-        result = await agent.translate("Find active companies founded after 2020", SAMPLE_ONTOLOGY)
+        result = await agent.translate(
+            "Find active companies founded after 2020", SAMPLE_ONTOLOGY
+        )
 
     assert isinstance(result, QueryAgentResult)
     assert result.entity_type_name == "Company"
@@ -50,7 +53,9 @@ async def test_query_agent_passes_question_to_prompt() -> None:
     run_mock = AsyncMock(return_value=MOCK_RESULT)
 
     with patch.object(agent, "_run_agent", new=run_mock):
-        await agent.translate("Find active companies founded after 2020", SAMPLE_ONTOLOGY)
+        await agent.translate(
+            "Find active companies founded after 2020", SAMPLE_ONTOLOGY
+        )
 
     run_mock.assert_awaited_once()
     prompt = run_mock.call_args[0][0]
@@ -89,7 +94,9 @@ async def test_query_agent_no_filter_result() -> None:
         confidence=0.95,
     )
 
-    with patch.object(agent, "_run_agent", new=AsyncMock(return_value=no_filter_result)):
+    with patch.object(
+        agent, "_run_agent", new=AsyncMock(return_value=no_filter_result)
+    ):
         result = await agent.translate("List all companies", SAMPLE_ONTOLOGY)
 
     assert result.filters is None

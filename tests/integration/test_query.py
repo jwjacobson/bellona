@@ -1,4 +1,5 @@
 """Integration tests for the natural language query endpoint."""
+
 import uuid
 from unittest.mock import AsyncMock, patch
 
@@ -20,7 +21,9 @@ async def _make_company_type(db: AsyncSession, suffix: str):
         EntityTypeCreate(
             name=f"Company-NL-{suffix}-{uuid.uuid4().hex[:4]}",
             properties=[
-                PropertyDefinitionCreate(name="name", data_type="string", required=True),
+                PropertyDefinitionCreate(
+                    name="name", data_type="string", required=True
+                ),
                 PropertyDefinitionCreate(name="founded_year", data_type="integer"),
                 PropertyDefinitionCreate(name="status", data_type="string"),
             ],
@@ -35,10 +38,20 @@ async def test_nl_query_returns_results(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     et = await _make_company_type(db_session, "basic")
-    db_session.add_all([
-        Entity(entity_type_id=et.id, properties={"name": "Acme", "founded_year": 2021, "status": "active"}, schema_version=1),
-        Entity(entity_type_id=et.id, properties={"name": "OldCo", "founded_year": 2010, "status": "active"}, schema_version=1),
-    ])
+    db_session.add_all(
+        [
+            Entity(
+                entity_type_id=et.id,
+                properties={"name": "Acme", "founded_year": 2021, "status": "active"},
+                schema_version=1,
+            ),
+            Entity(
+                entity_type_id=et.id,
+                properties={"name": "OldCo", "founded_year": 2010, "status": "active"},
+                schema_version=1,
+            ),
+        ]
+    )
     await db_session.flush()
 
     mock_result = QueryAgentResult(
@@ -71,10 +84,12 @@ async def test_nl_query_no_filter(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     et = await _make_company_type(db_session, "nofilter")
-    db_session.add_all([
-        Entity(entity_type_id=et.id, properties={"name": "X"}, schema_version=1),
-        Entity(entity_type_id=et.id, properties={"name": "Y"}, schema_version=1),
-    ])
+    db_session.add_all(
+        [
+            Entity(entity_type_id=et.id, properties={"name": "X"}, schema_version=1),
+            Entity(entity_type_id=et.id, properties={"name": "Y"}, schema_version=1),
+        ]
+    )
     await db_session.flush()
 
     mock_result = QueryAgentResult(
@@ -103,10 +118,24 @@ async def test_nl_query_with_group_filter(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     et = await _make_company_type(db_session, "group")
-    db_session.add_all([
-        Entity(entity_type_id=et.id, properties={"name": "Match", "founded_year": 2022, "status": "active"}, schema_version=1),
-        Entity(entity_type_id=et.id, properties={"name": "NoMatch", "founded_year": 2018, "status": "active"}, schema_version=1),
-    ])
+    db_session.add_all(
+        [
+            Entity(
+                entity_type_id=et.id,
+                properties={"name": "Match", "founded_year": 2022, "status": "active"},
+                schema_version=1,
+            ),
+            Entity(
+                entity_type_id=et.id,
+                properties={
+                    "name": "NoMatch",
+                    "founded_year": 2018,
+                    "status": "active",
+                },
+                schema_version=1,
+            ),
+        ]
+    )
     await db_session.flush()
 
     mock_result = QueryAgentResult(
@@ -161,6 +190,7 @@ async def test_nl_query_unresolvable_entity_type(
 
     assert response.status_code == 422
     assert "NonExistentType" in response.json()["detail"]
+
 
 async def test_nl_query_with_entity_type_hint(
     client: AsyncClient, db_session: AsyncSession

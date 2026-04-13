@@ -6,6 +6,7 @@ These tests are skipped by default and only run when --live is passed:
 
 They require CLAUDE_API_KEY to be set in the environment (via .env or .env.test).
 """
+
 import pytest
 
 from bellona.agents.mapper_agent import MapperAgent
@@ -28,14 +29,31 @@ pytestmark = [
 def _api_key() -> str:
     return get_settings().claude_api_key
 
+
 def _model() -> str:
     return get_settings().claude_model
 
+
 PERSON_SCHEMA = SchemaDiscovery(
     fields=[
-        SchemaField(name="full_name", inferred_type="string", nullable=False, sample_values=["Alice Smith", "Bob Jones"]),
-        SchemaField(name="years_old", inferred_type="integer", nullable=True, sample_values=[30, 25, 42]),
-        SchemaField(name="email_address", inferred_type="string", nullable=True, sample_values=["alice@example.com"]),
+        SchemaField(
+            name="full_name",
+            inferred_type="string",
+            nullable=False,
+            sample_values=["Alice Smith", "Bob Jones"],
+        ),
+        SchemaField(
+            name="years_old",
+            inferred_type="integer",
+            nullable=True,
+            sample_values=[30, 25, 42],
+        ),
+        SchemaField(
+            name="email_address",
+            inferred_type="string",
+            nullable=True,
+            sample_values=["alice@example.com"],
+        ),
     ],
     record_count_estimate=200,
 )
@@ -45,19 +63,54 @@ PERSON_ENTITY_TYPES = [
         "name": "Person",
         "description": "A human being",
         "properties": [
-            {"name": "name", "data_type": "string", "required": True, "description": "Full name"},
-            {"name": "age", "data_type": "integer", "required": False, "description": "Age in years"},
-            {"name": "email", "data_type": "string", "required": False, "description": "Email address"},
+            {
+                "name": "name",
+                "data_type": "string",
+                "required": True,
+                "description": "Full name",
+            },
+            {
+                "name": "age",
+                "data_type": "integer",
+                "required": False,
+                "description": "Age in years",
+            },
+            {
+                "name": "email",
+                "data_type": "string",
+                "required": False,
+                "description": "Email address",
+            },
         ],
     }
 ]
 
 STOCK_SCHEMA = SchemaDiscovery(
     fields=[
-        SchemaField(name="ticker", inferred_type="string", nullable=False, sample_values=["AAPL", "GOOG", "MSFT"]),
-        SchemaField(name="close_price", inferred_type="float", nullable=False, sample_values=[150.5, 2800.0, 310.2]),
-        SchemaField(name="trade_volume", inferred_type="integer", nullable=True, sample_values=[1000000, 5000000]),
-        SchemaField(name="trade_date", inferred_type="date", nullable=False, sample_values=["2024-01-01", "2024-01-02"]),
+        SchemaField(
+            name="ticker",
+            inferred_type="string",
+            nullable=False,
+            sample_values=["AAPL", "GOOG", "MSFT"],
+        ),
+        SchemaField(
+            name="close_price",
+            inferred_type="float",
+            nullable=False,
+            sample_values=[150.5, 2800.0, 310.2],
+        ),
+        SchemaField(
+            name="trade_volume",
+            inferred_type="integer",
+            nullable=True,
+            sample_values=[1000000, 5000000],
+        ),
+        SchemaField(
+            name="trade_date",
+            inferred_type="date",
+            nullable=False,
+            sample_values=["2024-01-01", "2024-01-02"],
+        ),
     ],
     record_count_estimate=500,
 )
@@ -120,7 +173,16 @@ async def test_live_schema_agent_valid_property_data_types() -> None:
     agent = SchemaAgent(api_key=_api_key(), model=_model())
     result = await agent.propose(STOCK_SCHEMA, [])
 
-    valid_types = {"string", "integer", "float", "boolean", "date", "datetime", "enum", "json"}
+    valid_types = {
+        "string",
+        "integer",
+        "float",
+        "boolean",
+        "date",
+        "datetime",
+        "enum",
+        "json",
+    }
     for prop in result.properties:
         assert prop.data_type in valid_types, f"Invalid data_type: {prop.data_type!r}"
 

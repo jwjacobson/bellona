@@ -23,7 +23,9 @@ class MappingProposalContent(BaseModel):
 
 class ProposedPropertyDefinition(BaseModel):
     name: str
-    data_type: Literal["string", "integer", "float", "boolean", "date", "datetime", "enum", "json"]
+    data_type: Literal[
+        "string", "integer", "float", "boolean", "date", "datetime", "enum", "json"
+    ]
     required: bool = False
     description: str = ""
 
@@ -37,7 +39,9 @@ class EntityTypeProposalContent(BaseModel):
 
 
 class QualityIssue(BaseModel):
-    issue_type: Literal["missing_value", "potential_duplicate", "outlier", "type_mismatch"]
+    issue_type: Literal[
+        "missing_value", "potential_duplicate", "outlier", "type_mismatch"
+    ]
     field: str | None = None
     entity_ids: list[str] = Field(default_factory=list)
     description: str

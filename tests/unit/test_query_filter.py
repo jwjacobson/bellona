@@ -1,4 +1,5 @@
 """Unit tests for the query filter model and clause builder."""
+
 import pytest
 from sqlalchemy import and_, or_
 from sqlalchemy.sql.elements import BinaryExpression, BooleanClauseList
@@ -51,7 +52,9 @@ def test_filter_group_nested() -> None:
                 op="or",
                 conditions=[
                     FilterCondition(property="status", operator="eq", value="active"),
-                    FilterCondition(property="employee_count", operator="gte", value=100),
+                    FilterCondition(
+                        property="employee_count", operator="gte", value=100
+                    ),
                 ],
             ),
         ],
@@ -124,7 +127,9 @@ def test_build_gte_clause_returns_expression() -> None:
 
 
 def test_build_in_clause_returns_expression() -> None:
-    cond = FilterCondition(property="status", operator="in", value=["active", "pending"])
+    cond = FilterCondition(
+        property="status", operator="in", value=["active", "pending"]
+    )
     clause = _filter_node_to_clause(cond)
     assert clause is not None
 
@@ -168,7 +173,9 @@ def test_build_nested_group_clause() -> None:
                 op="or",
                 conditions=[
                     FilterCondition(property="status", operator="eq", value="active"),
-                    FilterCondition(property="employee_count", operator="gte", value=100),
+                    FilterCondition(
+                        property="employee_count", operator="gte", value=100
+                    ),
                 ],
             ),
         ],

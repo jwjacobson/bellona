@@ -33,9 +33,7 @@ async def delete_entity(db: AsyncSession, entity_id: uuid.UUID) -> None:
 # ── Bulk Entity Delete ────────────────────────────────────────────────────────
 
 
-async def delete_entities_bulk(
-    db: AsyncSession, entity_ids: list[uuid.UUID]
-) -> int:
+async def delete_entities_bulk(db: AsyncSession, entity_ids: list[uuid.UUID]) -> int:
     """Delete specific entities by ID. Returns count of deleted entities."""
     # Delete relationships involving these entities first
     await db.execute(
@@ -47,18 +45,14 @@ async def delete_entities_bulk(
         )
     )
 
-    result = await db.execute(
-        sa_delete(Entity).where(Entity.id.in_(entity_ids))
-    )
+    result = await db.execute(sa_delete(Entity).where(Entity.id.in_(entity_ids)))
     await db.flush()
 
     logger.info("entities bulk deleted", count=result.rowcount)
     return result.rowcount
 
 
-async def delete_entities_by_type(
-    db: AsyncSession, entity_type_id: uuid.UUID
-) -> int:
+async def delete_entities_by_type(db: AsyncSession, entity_type_id: uuid.UUID) -> int:
     """Delete all entities of a given type. Returns count of deleted entities."""
     # Get entity IDs first for relationship cleanup
     entity_ids_result = await db.execute(

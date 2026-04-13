@@ -1,4 +1,5 @@
 """Mapper Agent: proposes field-to-property mappings for incoming data schemas."""
+
 import json
 from typing import Any
 
@@ -29,7 +30,11 @@ Rules:
 def _build_prompt(schema: SchemaDiscovery, entity_types: list[dict[str, Any]]) -> str:
     schema_lines = []
     for f in schema.fields:
-        samples = ", ".join(str(v) for v in f.sample_values[:3]) if f.sample_values else "none"
+        samples = (
+            ", ".join(str(v) for v in f.sample_values[:3])
+            if f.sample_values
+            else "none"
+        )
         schema_lines.append(
             f"  - {f.name} (type: {f.inferred_type}, nullable: {f.nullable}, samples: [{samples}])"
         )

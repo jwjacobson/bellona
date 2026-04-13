@@ -1,4 +1,5 @@
 """Integration tests for agent API endpoints. Agent LLM calls are mocked via service layer."""
+
 import uuid
 from unittest.mock import AsyncMock, patch
 
@@ -26,7 +27,10 @@ SAMPLE_CSV = "ticker,price\nAAPL,150\nGOOG,2800\n"
 MOCK_MAPPING_PROPOSAL = MappingProposalContent(
     mappings=[
         FieldMappingProposedEntry(
-            source_field="ticker", target_property="symbol", confidence=0.95, reasoning="obvious"
+            source_field="ticker",
+            target_property="symbol",
+            confidence=0.95,
+            reasoning="obvious",
         ),
     ],
     overall_confidence=0.95,
@@ -62,13 +66,20 @@ async def test_propose_mapping(
     csv_file = tmp_path / "stocks.csv"
     csv_file.write_text(SAMPLE_CSV)
     connector = await create_connector(
-        db_session, "csv", f"api-pm-{uuid.uuid4().hex[:4]}", {"file_path": str(csv_file)}
+        db_session,
+        "csv",
+        f"api-pm-{uuid.uuid4().hex[:4]}",
+        {"file_path": str(csv_file)},
     )
     et = await create_entity_type(
         db_session,
         EntityTypeCreate(
             name=f"ApiPM-{uuid.uuid4().hex[:6]}",
-            properties=[PropertyDefinitionCreate(name="symbol", data_type="string", required=True)],
+            properties=[
+                PropertyDefinitionCreate(
+                    name="symbol", data_type="string", required=True
+                )
+            ],
         ),
     )
     await db_session.flush()
@@ -105,7 +116,10 @@ async def test_confirm_mapping(
     csv_file = tmp_path / "confirm.csv"
     csv_file.write_text(SAMPLE_CSV)
     connector = await create_connector(
-        db_session, "csv", f"api-cm-{uuid.uuid4().hex[:4]}", {"file_path": str(csv_file)}
+        db_session,
+        "csv",
+        f"api-cm-{uuid.uuid4().hex[:4]}",
+        {"file_path": str(csv_file)},
     )
     et = await create_entity_type(
         db_session,
@@ -118,7 +132,14 @@ async def test_confirm_mapping(
         proposal_type="mapping",
         status="proposed",
         content={
-            "mappings": [{"source_field": "ticker", "target_property": "symbol", "confidence": 0.9, "reasoning": "ok"}],
+            "mappings": [
+                {
+                    "source_field": "ticker",
+                    "target_property": "symbol",
+                    "confidence": 0.9,
+                    "reasoning": "ok",
+                }
+            ],
             "overall_confidence": 0.9,
             "notes": "",
         },
@@ -142,7 +163,6 @@ async def test_confirm_mapping_not_found(client: AsyncClient) -> None:
     assert response.status_code == 404
 
 
-
 # ── POST /api/v1/schema/propose ───────────────────────────────────────────────
 
 
@@ -152,7 +172,10 @@ async def test_propose_schema(
     csv_file = tmp_path / "schema.csv"
     csv_file.write_text(SAMPLE_CSV)
     connector = await create_connector(
-        db_session, "csv", f"api-ps-{uuid.uuid4().hex[:4]}", {"file_path": str(csv_file)}
+        db_session,
+        "csv",
+        f"api-ps-{uuid.uuid4().hex[:4]}",
+        {"file_path": str(csv_file)},
     )
     await db_session.flush()
 
@@ -194,7 +217,12 @@ async def test_confirm_schema_proposal(
             "entity_type_name": unique_name,
             "description": "Agent proposed",
             "properties": [
-                {"name": "ticker", "data_type": "string", "required": True, "description": ""},
+                {
+                    "name": "ticker",
+                    "data_type": "string",
+                    "required": True,
+                    "description": "",
+                },
             ],
             "reasoning": "Makes sense",
             "confidence": 0.88,
@@ -254,12 +282,11 @@ async def test_confirm_schema_already_approved(
     response = await client.post(f"/api/v1/proposals/{proposal.id}/confirm")
     assert response.status_code == 422
 
+
 # ── POST /api/v1/proposals/{id}/reject ────────────────────────────────────────
 
 
-async def test_reject_proposal(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_reject_proposal(client: AsyncClient, db_session: AsyncSession) -> None:
     proposal = AgentProposal(
         proposal_type="mapping",
         status="proposed",
@@ -283,9 +310,7 @@ async def test_reject_proposal_not_found(client: AsyncClient) -> None:
 # ── GET /api/v1/proposals ─────────────────────────────────────────────────────
 
 
-async def test_list_proposals(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_list_proposals(client: AsyncClient, db_session: AsyncSession) -> None:
     proposed = AgentProposal(
         proposal_type="mapping",
         status="proposed",
@@ -311,14 +336,14 @@ async def test_list_proposals(
 # ── POST /api/v1/quality/check/{entity_type_id} ───────────────────────────────
 
 
-async def test_quality_check(
-    client: AsyncClient, db_session: AsyncSession
-) -> None:
+async def test_quality_check(client: AsyncClient, db_session: AsyncSession) -> None:
     et = await create_entity_type(
         db_session,
         EntityTypeCreate(
             name=f"QA-API-{uuid.uuid4().hex[:6]}",
-            properties=[PropertyDefinitionCreate(name="name", data_type="string", required=True)],
+            properties=[
+                PropertyDefinitionCreate(name="name", data_type="string", required=True)
+            ],
         ),
     )
     await db_session.flush()

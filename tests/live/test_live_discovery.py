@@ -1,4 +1,5 @@
 """Live tests for Discovery Agent — hit real APIs."""
+
 import pytest
 
 from bellona.agents.discovery_agent import DiscoveryAgent

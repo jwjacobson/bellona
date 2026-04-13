@@ -1,4 +1,5 @@
 """Entity query endpoints."""
+
 import uuid
 
 import structlog
@@ -9,11 +10,11 @@ from bellona.db.session import get_db
 from bellona.schemas.delete import BulkDeleteRequest, BulkDeleteResult
 from bellona.schemas.query import EntityPage, EntityQuery, EntityRead, RelationshipRead
 from bellona.services.entity import (
-        delete_entity,
-        delete_entities_bulk,
-        delete_entities_by_type,
-        delete_relationship,
-    )
+    delete_entity,
+    delete_entities_bulk,
+    delete_entities_by_type,
+    delete_relationship,
+)
 from bellona.services.query import get_entity, get_entity_relationships, query_entities
 
 logger = structlog.get_logger()
@@ -48,7 +49,9 @@ async def get_entity_endpoint(
 ) -> EntityRead:
     entity = await get_entity(db, entity_id)
     if entity is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found"
+        )
     return EntityRead.model_validate(entity)
 
 
@@ -59,7 +62,9 @@ async def get_entity_relationships_endpoint(
 ) -> list[RelationshipRead]:
     entity = await get_entity(db, entity_id)
     if entity is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found"
+        )
     relationships = await get_entity_relationships(db, entity_id)
     return [RelationshipRead.model_validate(r) for r in relationships]
 
@@ -76,8 +81,8 @@ async def delete_entity_endpoint(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found"
         )
- 
- 
+
+
 @router.post("/bulk-delete", response_model=BulkDeleteResult)
 async def bulk_delete_entities_endpoint(
     data: BulkDeleteRequest,
@@ -86,8 +91,8 @@ async def bulk_delete_entities_endpoint(
     count = await delete_entities_bulk(db, data.entity_ids)
     await db.commit()
     return BulkDeleteResult(deleted_count=count)
- 
- 
+
+
 @router.delete("", response_model=BulkDeleteResult)
 async def delete_entities_by_type_endpoint(
     entity_type_id: uuid.UUID = Query(...),

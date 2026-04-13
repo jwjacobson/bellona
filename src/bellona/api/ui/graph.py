@@ -33,9 +33,7 @@ async def graph_data(db: AsyncSession = Depends(get_db)):
 
     entity_ids = {e.id for e in entities}
     rel_result = await db.execute(
-        select(Relationship).where(
-            Relationship.source_entity_id.in_(entity_ids)
-        )
+        select(Relationship).where(Relationship.source_entity_id.in_(entity_ids))
     )
     relationships = list(rel_result.scalars().all())
 
@@ -50,27 +48,31 @@ async def graph_data(db: AsyncSession = Depends(get_db)):
             if entity.properties
             else str(entity.id)[:8]
         )
-        nodes.append({
-            "data": {
-                "id": str(entity.id),
-                "label": str(label)[:40],
-                "entity_type": et.name if et else "unknown",
-                "entity_type_id": str(entity.entity_type_id),
+        nodes.append(
+            {
+                "data": {
+                    "id": str(entity.id),
+                    "label": str(label)[:40],
+                    "entity_type": et.name if et else "unknown",
+                    "entity_type_id": str(entity.entity_type_id),
+                }
             }
-        })
+        )
 
     edges = []
     for rel in relationships:
         if rel.target_entity_id not in entity_ids:
             continue
         rt = rel_types.get(rel.relationship_type_id)
-        edges.append({
-            "data": {
-                "id": str(rel.id),
-                "source": str(rel.source_entity_id),
-                "target": str(rel.target_entity_id),
-                "label": rt.name if rt else "",
+        edges.append(
+            {
+                "data": {
+                    "id": str(rel.id),
+                    "source": str(rel.source_entity_id),
+                    "target": str(rel.target_entity_id),
+                    "label": rt.name if rt else "",
+                }
             }
-        })
+        )
 
     return JSONResponse({"nodes": nodes, "edges": edges})

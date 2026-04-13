@@ -1,4 +1,5 @@
 """Root conftest: register custom pytest marks and configure collection."""
+
 import pytest
 
 

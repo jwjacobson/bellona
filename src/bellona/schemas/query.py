@@ -1,4 +1,5 @@
 """Query layer schemas: filter models, entity read/page, relationship read."""
+
 from __future__ import annotations
 
 import uuid
@@ -16,8 +17,16 @@ class FilterCondition(BaseModel):
 
     property: str
     operator: Literal[
-        "eq", "neq", "gt", "gte", "lt", "lte",
-        "contains", "in", "is_null", "not_null",
+        "eq",
+        "neq",
+        "gt",
+        "gte",
+        "lt",
+        "lte",
+        "contains",
+        "in",
+        "is_null",
+        "not_null",
     ]
     value: Any = None
 
