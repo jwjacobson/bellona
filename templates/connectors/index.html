@@ -34,6 +34,9 @@
             <div class="text-xs leading-relaxed">
               <div>Schema: <span class="{% if ss == 'confirmed' %}text-emerald-400{% elif ss == 'proposed' %}text-amber-400{% else %}text-stone-500{% endif %}">{{ ss }}</span></div>
               <div>Mapping: <span class="{% if ms == 'confirmed' %}text-emerald-400{% elif ms == 'proposed' %}text-amber-400{% else %}text-stone-500{% endif %}">{{ ms }}</span></div>
+             {% if conn.last_sync_at %}
+              <div>Synced: <span class="text-emerald-400">{{ conn.last_sync_at.strftime("%Y-%m-%d") }}</span></div>
+            {% endif %}
             </div>
           </td>
           <td class="px-4 py-2">
