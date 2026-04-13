@@ -27,6 +27,7 @@ app.include_router(v1_router)
 app.include_router(ui_router)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
 @app.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
