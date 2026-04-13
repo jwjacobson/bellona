@@ -1,4 +1,5 @@
 """Agent service layer: orchestrates agent calls and persists proposals."""
+
 import uuid
 from typing import Any
 from urllib.parse import urlparse
@@ -42,10 +43,14 @@ class ProposalError(Exception):
 def _get_api_key() -> str:
     return get_settings().claude_api_key
 
+
 def _get_model() -> str:
     return get_settings().claude_model
 
-async def _get_connector_or_raise(db: AsyncSession, connector_id: uuid.UUID) -> Connector:
+
+async def _get_connector_or_raise(
+    db: AsyncSession, connector_id: uuid.UUID
+) -> Connector:
     connector = await db.get(Connector, connector_id)
     if connector is None:
         raise ProposalError(f"Connector {connector_id} not found")
@@ -191,18 +196,18 @@ async def confirm_mapping_proposal(
             f"Proposal {proposal_id} is type '{proposal.proposal_type}', not 'mapping'"
         )
     if proposal.status != "proposed":
-        raise ProposalError(
-            f"Proposal {proposal_id} is already '{proposal.status}'"
-        )
+        raise ProposalError(f"Proposal {proposal_id} is already '{proposal.status}'")
     entity_type = await _get_entity_type_or_raise(db, proposal.entity_type_id)
     # Extract mapping entries (strip agent-only fields like reasoning/confidence).
     raw_mappings = proposal.content.get("mappings", [])
     clean_mappings = [
-    {
-        "source_field": m["source_field"],
-        "target_property": m["target_property"].removeprefix(f"{entity_type.name}."),
-    }
-    for m in raw_mappings
+        {
+            "source_field": m["source_field"],
+            "target_property": m["target_property"].removeprefix(
+                f"{entity_type.name}."
+            ),
+        }
+        for m in raw_mappings
     ]
 
     field_mapping = FieldMapping(
@@ -236,9 +241,7 @@ async def confirm_schema_proposal(
             f"Proposal {proposal_id} is type '{proposal.proposal_type}', not 'entity_type'"
         )
     if proposal.status != "proposed":
-        raise ProposalError(
-            f"Proposal {proposal_id} is already '{proposal.status}'"
-        )
+        raise ProposalError(f"Proposal {proposal_id} is already '{proposal.status}'")
 
     content = EntityTypeProposalContent.model_validate(proposal.content)
     entity_type = await create_entity_type(
@@ -275,9 +278,7 @@ async def reject_proposal(db: AsyncSession, proposal_id: uuid.UUID) -> AgentProp
     """Mark any proposal as rejected."""
     proposal = await _get_proposal_or_raise(db, proposal_id)
     if proposal.status != "proposed":
-        raise ProposalError(
-            f"Proposal {proposal_id} is already '{proposal.status}'"
-        )
+        raise ProposalError(f"Proposal {proposal_id} is already '{proposal.status}'")
     proposal.status = "rejected"
     await db.flush()
     logger.info("proposal rejected", proposal_id=str(proposal_id))
@@ -319,10 +320,7 @@ async def check_quality(
             for p in entity_type.property_definitions
         ],
     }
-    entities_context = [
-        {"id": str(e.id), "properties": e.properties}
-        for e in entities
-    ]
+    entities_context = [{"id": str(e.id), "properties": e.properties} for e in entities]
 
     if _mock_result is not None:
         return _mock_result
@@ -354,7 +352,18 @@ def _normalize_filters(raw: dict[str, Any]) -> dict[str, Any]:
 
     # Handle {"neq": val} or {"eq": val} style → {"operator": "neq", "value": val}
     if "operator" not in raw:
-        for op in ("eq", "neq", "gt", "gte", "lt", "lte", "contains", "in", "is_null", "not_null"):
+        for op in (
+            "eq",
+            "neq",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "contains",
+            "in",
+            "is_null",
+            "not_null",
+        ):
             if op in raw:
                 raw = {**raw, "operator": op, "value": raw.pop(op)}
                 break
@@ -364,6 +373,7 @@ def _normalize_filters(raw: dict[str, Any]) -> dict[str, Any]:
         raw = {**raw, "conditions": [_normalize_filters(c) for c in raw["conditions"]]}
 
     return raw
+
 
 async def run_nl_query(
     db: AsyncSession,
@@ -400,7 +410,11 @@ async def run_nl_query(
     resolved_et_id: uuid.UUID | None = entity_type_id
     if resolved_et_id is None and agent_result.entity_type_name is not None:
         matched = next(
-           (et for et in entity_types if et.name.lower() == agent_result.entity_type_name.lower()),
+            (
+                et
+                for et in entity_types
+                if et.name.lower() == agent_result.entity_type_name.lower()
+            ),
             None,
         )
         if matched is not None:
@@ -503,12 +517,14 @@ async def confirm_discovery_proposal(
             f"Proposal {proposal_id} is type '{proposal.proposal_type}', not 'discovery'"
         )
     if proposal.status != "proposed":
-        raise ProposalError(
-            f"Proposal {proposal_id} is already '{proposal.status}'"
-        )
+        raise ProposalError(f"Proposal {proposal_id} is already '{proposal.status}'")
 
     content = DiscoveryProposalContent.model_validate(proposal.content)
-    indices = selected_resources if selected_resources is not None else list(range(len(content.resources)))
+    indices = (
+        selected_resources
+        if selected_resources is not None
+        else list(range(len(content.resources)))
+    )
     connectors: list[Connector] = []
 
     for idx in indices:
@@ -525,7 +541,7 @@ async def confirm_discovery_proposal(
             if not endpoint.startswith("/"):
                 endpoint = "/" + endpoint
         elif endpoint.startswith(base_parsed.path) and base_parsed.path != "/":
-            endpoint = endpoint[len(base_parsed.path):]
+            endpoint = endpoint[len(base_parsed.path) :]
             if not endpoint.startswith("/"):
                 endpoint = "/" + endpoint
 
@@ -539,27 +555,19 @@ async def confirm_discovery_proposal(
             config={
                 "base_url": content.base_url,
                 "endpoint": endpoint,
-                "auth": content.auth.model_dump() if content.auth.auth_required else {"type": "none"},
+                "auth": content.auth.model_dump()
+                if content.auth.auth_required
+                else {"type": "none"},
                 "records_jsonpath": resource.records_jsonpath,
                 "pagination": pagination,
             },
             status="active",
         )
-       
+
         db.add(connector)
         connectors.append(connector)
     proposal.status = "confirmed"
     await db.flush()
-
-    # Queue schema proposals for each new connector (non-fatal)
-    for connector in connectors:
-        try:
-            await propose_schema(db, connector.id)
-        except ProposalError:
-            logger.warning(
-                "schema proposal auto-queue failed",
-                connector_id=str(connector.id),
-            )
 
     logger.info(
         "discovery proposal confirmed",

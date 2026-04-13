@@ -7,6 +7,7 @@ from bellona.schemas.ontology import PropertyDefinitionCreate
 
 _NULL_SENTINELS = {"unknown", "n/a", "na", "none", "-", "null", ""}
 
+
 @dataclass
 class FieldError:
     field: str

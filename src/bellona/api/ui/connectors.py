@@ -15,7 +15,11 @@ from bellona.db.session import get_db
 from bellona.models.ontology import EntityType
 from bellona.models.system import AgentProposal, FieldMapping, IngestionJob
 from bellona.schemas.connectors import ConnectorPatch
-from bellona.services.agent_service import propose_mapping, propose_schema, ProposalError
+from bellona.services.agent_service import (
+    propose_mapping,
+    propose_schema,
+    ProposalError,
+)
 from bellona.services.ingestion import (
     create_connector,
     create_ingestion_job,
@@ -62,8 +66,7 @@ async def connectors_index(request: Request, db: AsyncSession = Depends(get_db))
 
         # Confirmed field mappings
         fm_result = await db.execute(
-            select(FieldMapping)
-            .where(
+            select(FieldMapping).where(
                 FieldMapping.connector_id.in_(connector_ids),
                 FieldMapping.status == "confirmed",
             )
@@ -85,7 +88,9 @@ async def connectors_index(request: Request, db: AsyncSession = Depends(get_db))
             if cid in confirmed_mapping_connector_ids:
                 mapping_status = "confirmed"
             else:
-                mapping_for_conn = [p for p in mapping_proposals if p.connector_id == cid]
+                mapping_for_conn = [
+                    p for p in mapping_proposals if p.connector_id == cid
+                ]
                 if any(p.status == "confirmed" for p in mapping_for_conn):
                     mapping_status = "confirmed"
                 elif any(p.status == "proposed" for p in mapping_for_conn):
@@ -99,7 +104,9 @@ async def connectors_index(request: Request, db: AsyncSession = Depends(get_db))
             }
 
     return templates.TemplateResponse(
-        request, "connectors/index.html", {"connectors": connectors, "pipeline": pipeline}
+        request,
+        "connectors/index.html",
+        {"connectors": connectors, "pipeline": pipeline},
     )
 
 
@@ -116,14 +123,14 @@ async def create_rest_connector(
     db: AsyncSession = Depends(get_db),
 ):
     config = {
-    "base_url": base_url,
-    "endpoint": endpoint,
-    "auth": {"type": auth_type},
-    "records_jsonpath": record_path,
-    "pagination": {
-        "strategy": pagination_strategy,
-    },
-}
+        "base_url": base_url,
+        "endpoint": endpoint,
+        "auth": {"type": auth_type},
+        "records_jsonpath": record_path,
+        "pagination": {
+            "strategy": pagination_strategy,
+        },
+    }
     connector = await create_connector(db, type, name, config)
     await db.commit()
     return RedirectResponse(url=f"/ui/connectors/{connector.id}", status_code=303)
@@ -150,22 +157,6 @@ async def upload_csv_connector(
     return RedirectResponse(url=f"/ui/connectors/{connector.id}", status_code=303)
 
 
-# @router.post("/discover")
-# async def discover_api_ui(
-#     request: Request,
-#     base_url: str = Form(...),
-#     db: AsyncSession = Depends(get_db),
-# ):
-#     from bellona.services.agent_service import discover_api
-
-#     try:
-#         proposal = await discover_api(db, base_url)
-#         await db.commit()
-#     except ProposalError as exc:
-#         logger.warning("discovery failed", base_url=base_url, error=str(exc))
-#         return RedirectResponse(url="/ui/connectors", status_code=303)
-#     return RedirectResponse(url=f"/ui/proposals/{proposal.id}", status_code=303)
-
 @router.post("/discover")
 async def discover_api_ui(
     request: Request,
@@ -189,6 +180,7 @@ async def discover_api_ui(
             "connectors/_discover_result.html",
             {"error": str(exc)},
         )
+
 
 @router.get("/{connector_id}")
 async def connector_detail(
@@ -250,7 +242,11 @@ async def connector_detail(
 
     # Confirmed entity type (from confirmed schema proposal)
     confirmed_entity_type = None
-    if schema_proposal and schema_proposal.status == "confirmed" and schema_proposal.entity_type_id:
+    if (
+        schema_proposal
+        and schema_proposal.status == "confirmed"
+        and schema_proposal.entity_type_id
+    ):
         et_load = await db.execute(
             select(EntityType)
             .where(EntityType.id == schema_proposal.entity_type_id)
@@ -259,9 +255,7 @@ async def connector_detail(
         confirmed_entity_type = et_load.scalar_one_or_none()
 
     # Most recent completed job for sync info
-    last_completed_job = next(
-        (j for j in jobs if j.status == "completed"), None
-    )
+    last_completed_job = next((j for j in jobs if j.status == "completed"), None)
 
     return templates.TemplateResponse(
         request,
@@ -308,7 +302,9 @@ async def propose_schema_ui(
         await propose_schema(db, connector_id)
         await db.commit()
     except ProposalError as exc:
-        logger.warning("schema proposal failed", connector_id=str(connector_id), error=str(exc))
+        logger.warning(
+            "schema proposal failed", connector_id=str(connector_id), error=str(exc)
+        )
     return RedirectResponse(url=f"/ui/connectors/{connector_id}", status_code=303)
 
 
@@ -351,13 +347,13 @@ async def edit_connector(
     connector = await get_connector(db, connector_id)
     if connector is None:
         return templates.TemplateResponse(request, "404.html", {}, status_code=404)
- 
+
     pagination = {"strategy": pagination_strategy}
     if page_size:
         pagination["page_size"] = int(page_size)
     if pagination_strategy == "offset":
         pagination["page_param"] = page_param
- 
+
     config = {
         "base_url": base_url,
         "endpoint": endpoint,
@@ -365,7 +361,7 @@ async def edit_connector(
         "records_jsonpath": records_jsonpath,
         "pagination": pagination,
     }
- 
+
     patch_data = ConnectorPatch(name=name, config=config)
     await patch_connector(db, connector, patch_data)
     await db.commit()
@@ -389,9 +385,7 @@ async def connector_jobs_fragment(
     jobs = list(result.scalars().all())
     has_running_job = bool(jobs and jobs[0].status in ("running", "pending"))
 
-    last_completed_job = next(
-        (j for j in jobs if j.status == "completed"), None
-    )
+    last_completed_job = next((j for j in jobs if j.status == "completed"), None)
 
     # Check for confirmed entity type and mapping
     schema_result = await db.execute(

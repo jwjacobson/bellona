@@ -1,4 +1,5 @@
 """Natural language query endpoint."""
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,4 +26,6 @@ async def natural_language_query(
         msg = str(exc)
         if "not found" in msg:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=msg)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=msg
+        )

@@ -1,4 +1,5 @@
 """Integration tests for entity query endpoints."""
+
 import uuid
 
 import pytest
@@ -22,7 +23,9 @@ async def _make_entity_type(db: AsyncSession, suffix: str) -> object:
         EntityTypeCreate(
             name=f"EQ-{suffix}-{uuid.uuid4().hex[:4]}",
             properties=[
-                PropertyDefinitionCreate(name="name", data_type="string", required=True),
+                PropertyDefinitionCreate(
+                    name="name", data_type="string", required=True
+                ),
                 PropertyDefinitionCreate(name="year", data_type="integer"),
                 PropertyDefinitionCreate(name="status", data_type="string"),
             ],
@@ -41,11 +44,15 @@ def _make_entity(entity_type_id: uuid.UUID, **props) -> Entity:
 # ── GET /api/v1/entities ──────────────────────────────────────────────────────
 
 
-async def test_list_entities_empty(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_list_entities_empty(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     et = await _make_entity_type(db_session, "empty")
     await db_session.flush()
 
-    response = await client.get("/api/v1/entities", params={"entity_type_id": str(et.id)})
+    response = await client.get(
+        "/api/v1/entities", params={"entity_type_id": str(et.id)}
+    )
 
     assert response.status_code == 200
     data = response.json()
@@ -54,7 +61,9 @@ async def test_list_entities_empty(client: AsyncClient, db_session: AsyncSession
     assert data["page"] == 1
 
 
-async def test_list_entities_pagination(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_list_entities_pagination(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     et = await _make_entity_type(db_session, "page")
     await db_session.flush()
 
@@ -74,7 +83,9 @@ async def test_list_entities_pagination(client: AsyncClient, db_session: AsyncSe
     assert data["pages"] == 2
 
 
-async def test_list_entities_page_two(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_list_entities_page_two(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     et = await _make_entity_type(db_session, "page2")
     await db_session.flush()
 
@@ -118,7 +129,9 @@ async def test_get_entity_not_found(client: AsyncClient) -> None:
 # ── GET /api/v1/entities/{id}/relationships ───────────────────────────────────
 
 
-async def test_get_entity_relationships(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_get_entity_relationships(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     et = await _make_entity_type(db_session, "rel")
     e1 = _make_entity(et.id, name="Source")
     e2 = _make_entity(et.id, name="Target")
@@ -151,7 +164,9 @@ async def test_get_entity_relationships(client: AsyncClient, db_session: AsyncSe
     assert data[0]["target_entity_id"] == str(e2.id)
 
 
-async def test_get_entity_relationships_target(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_get_entity_relationships_target(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     """Entity that is a target also sees the relationship."""
     et = await _make_entity_type(db_session, "relt")
     e1 = _make_entity(et.id, name="Src")
@@ -196,11 +211,13 @@ async def test_query_entities_by_entity_type(
 ) -> None:
     et = await _make_entity_type(db_session, "qet")
     other_et = await _make_entity_type(db_session, "other")
-    db_session.add_all([
-        _make_entity(et.id, name="Alpha"),
-        _make_entity(et.id, name="Beta"),
-        _make_entity(other_et.id, name="Gamma"),
-    ])
+    db_session.add_all(
+        [
+            _make_entity(et.id, name="Alpha"),
+            _make_entity(et.id, name="Beta"),
+            _make_entity(other_et.id, name="Gamma"),
+        ]
+    )
     await db_session.flush()
 
     response = await client.post(
@@ -219,11 +236,13 @@ async def test_query_entities_eq_filter(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     et = await _make_entity_type(db_session, "qeq")
-    db_session.add_all([
-        _make_entity(et.id, name="Alice", status="active"),
-        _make_entity(et.id, name="Bob", status="inactive"),
-        _make_entity(et.id, name="Carol", status="active"),
-    ])
+    db_session.add_all(
+        [
+            _make_entity(et.id, name="Alice", status="active"),
+            _make_entity(et.id, name="Bob", status="inactive"),
+            _make_entity(et.id, name="Carol", status="active"),
+        ]
+    )
     await db_session.flush()
 
     response = await client.post(
@@ -245,11 +264,13 @@ async def test_query_entities_gte_filter(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     et = await _make_entity_type(db_session, "qgte")
-    db_session.add_all([
-        _make_entity(et.id, name="Old", year=2015),
-        _make_entity(et.id, name="Recent", year=2021),
-        _make_entity(et.id, name="Newer", year=2023),
-    ])
+    db_session.add_all(
+        [
+            _make_entity(et.id, name="Old", year=2015),
+            _make_entity(et.id, name="Recent", year=2021),
+            _make_entity(et.id, name="Newer", year=2023),
+        ]
+    )
     await db_session.flush()
 
     response = await client.post(
@@ -271,12 +292,14 @@ async def test_query_entities_nested_filter(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     et = await _make_entity_type(db_session, "qnest")
-    db_session.add_all([
-        _make_entity(et.id, name="A", year=2021, status="active"),
-        _make_entity(et.id, name="B", year=2019, status="active"),
-        _make_entity(et.id, name="C", year=2021, status="inactive"),
-        _make_entity(et.id, name="D", year=2018, status="inactive"),
-    ])
+    db_session.add_all(
+        [
+            _make_entity(et.id, name="A", year=2021, status="active"),
+            _make_entity(et.id, name="B", year=2019, status="active"),
+            _make_entity(et.id, name="C", year=2021, status="inactive"),
+            _make_entity(et.id, name="D", year=2018, status="inactive"),
+        ]
+    )
     await db_session.flush()
 
     response = await client.post(
@@ -304,11 +327,17 @@ async def test_query_entities_deeply_nested_filter(
 ) -> None:
     """Test the spec's example: AND of (year>=2020) OR (status=active OR year>=2022)."""
     et = await _make_entity_type(db_session, "qdnest")
-    db_session.add_all([
-        _make_entity(et.id, name="A", year=2021, status="inactive"),  # year>=2020: yes
-        _make_entity(et.id, name="B", year=2019, status="active"),    # status=active: yes
-        _make_entity(et.id, name="C", year=2018, status="inactive"),  # neither: no
-    ])
+    db_session.add_all(
+        [
+            _make_entity(
+                et.id, name="A", year=2021, status="inactive"
+            ),  # year>=2020: yes
+            _make_entity(
+                et.id, name="B", year=2019, status="active"
+            ),  # status=active: yes
+            _make_entity(et.id, name="C", year=2018, status="inactive"),  # neither: no
+        ]
+    )
     await db_session.flush()
 
     response = await client.post(
@@ -336,11 +365,13 @@ async def test_query_entities_sort(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     et = await _make_entity_type(db_session, "qsort")
-    db_session.add_all([
-        _make_entity(et.id, name="Charlie"),
-        _make_entity(et.id, name="Alice"),
-        _make_entity(et.id, name="Bob"),
-    ])
+    db_session.add_all(
+        [
+            _make_entity(et.id, name="Charlie"),
+            _make_entity(et.id, name="Alice"),
+            _make_entity(et.id, name="Bob"),
+        ]
+    )
     await db_session.flush()
 
     response = await client.post(
@@ -360,11 +391,13 @@ async def test_query_entities_sort_desc(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     et = await _make_entity_type(db_session, "qsortd")
-    db_session.add_all([
-        _make_entity(et.id, name="Charlie"),
-        _make_entity(et.id, name="Alice"),
-        _make_entity(et.id, name="Bob"),
-    ])
+    db_session.add_all(
+        [
+            _make_entity(et.id, name="Charlie"),
+            _make_entity(et.id, name="Alice"),
+            _make_entity(et.id, name="Bob"),
+        ]
+    )
     await db_session.flush()
 
     response = await client.post(
@@ -415,11 +448,13 @@ async def test_query_entities_contains_filter(
     client: AsyncClient, db_session: AsyncSession
 ) -> None:
     et = await _make_entity_type(db_session, "qcont")
-    db_session.add_all([
-        _make_entity(et.id, name="Acme Corporation"),
-        _make_entity(et.id, name="Beta Ltd"),
-        _make_entity(et.id, name="Acme Industries"),
-    ])
+    db_session.add_all(
+        [
+            _make_entity(et.id, name="Acme Corporation"),
+            _make_entity(et.id, name="Beta Ltd"),
+            _make_entity(et.id, name="Acme Industries"),
+        ]
+    )
     await db_session.flush()
 
     response = await client.post(

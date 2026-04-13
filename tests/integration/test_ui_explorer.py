@@ -1,4 +1,5 @@
 """UI tests for the data explorer."""
+
 import pytest
 from httpx import AsyncClient
 
@@ -14,7 +15,10 @@ async def test_explorer_index(client: AsyncClient) -> None:
 async def test_explorer_entity_type_view(client: AsyncClient) -> None:
     create = await client.post(
         "/api/v1/entity-types",
-        json={"name": "UIExplorerType", "properties": [{"name": "label", "data_type": "string"}]},
+        json={
+            "name": "UIExplorerType",
+            "properties": [{"name": "label", "data_type": "string"}],
+        },
     )
     entity_type_id = create.json()["id"]
 

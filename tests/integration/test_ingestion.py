@@ -86,8 +86,12 @@ async def test_get_connector_not_found(db_session: AsyncSession) -> None:
 
 async def test_list_connectors(db_session: AsyncSession) -> None:
     before = await list_connectors(db_session)
-    await create_connector(db_session, "csv", "list-test-1", {"file_path": "/tmp/a.csv"})
-    await create_connector(db_session, "csv", "list-test-2", {"file_path": "/tmp/b.csv"})
+    await create_connector(
+        db_session, "csv", "list-test-1", {"file_path": "/tmp/a.csv"}
+    )
+    await create_connector(
+        db_session, "csv", "list-test-2", {"file_path": "/tmp/b.csv"}
+    )
     await db_session.flush()
     after = await list_connectors(db_session)
     assert len(after) == len(before) + 2
@@ -113,7 +117,9 @@ async def test_create_field_mapping(db_session: AsyncSession) -> None:
         db_session,
         connector_id=connector.id,
         entity_type_id=et.id,
-        mapping_config={"mappings": [{"source_field": "full_name", "target_property": "name"}]},
+        mapping_config={
+            "mappings": [{"source_field": "full_name", "target_property": "name"}]
+        },
     )
     await db_session.flush()
     assert mapping.id is not None
@@ -132,7 +138,10 @@ async def _setup_ingestion(
 ) -> IngestionJob:
     """Helper: create connector, mapping, and job for a test."""
     connector = await create_connector(
-        db_session, "csv", f"ingest-conn-{uuid.uuid4().hex[:6]}", {"file_path": str(csv_path)}
+        db_session,
+        "csv",
+        f"ingest-conn-{uuid.uuid4().hex[:6]}",
+        {"file_path": str(csv_path)},
     )
     mapping = await create_field_mapping(
         db_session,
@@ -154,7 +163,9 @@ async def test_execute_ingestion_job_creates_entities(
         EntityTypeCreate(
             name=f"Person-{uuid.uuid4().hex[:6]}",
             properties=[
-                PropertyDefinitionCreate(name="name", data_type="string", required=True),
+                PropertyDefinitionCreate(
+                    name="name", data_type="string", required=True
+                ),
                 PropertyDefinitionCreate(name="age", data_type="integer"),
             ],
         ),
@@ -216,8 +227,12 @@ async def test_execute_ingestion_job_tracks_failed_records(
         EntityTypeCreate(
             name=f"Person3-{uuid.uuid4().hex[:6]}",
             properties=[
-                PropertyDefinitionCreate(name="name", data_type="string", required=True),
-                PropertyDefinitionCreate(name="age", data_type="integer", required=True),
+                PropertyDefinitionCreate(
+                    name="name", data_type="string", required=True
+                ),
+                PropertyDefinitionCreate(
+                    name="age", data_type="integer", required=True
+                ),
             ],
         ),
     )
@@ -278,7 +293,10 @@ async def test_execute_ingestion_job_fails_without_mapping(
     db_session: AsyncSession, person_csv: Path
 ) -> None:
     connector = await create_connector(
-        db_session, "csv", f"no-mapping-{uuid.uuid4().hex[:6]}", {"file_path": str(person_csv)}
+        db_session,
+        "csv",
+        f"no-mapping-{uuid.uuid4().hex[:6]}",
+        {"file_path": str(person_csv)},
     )
     job = IngestionJob(connector_id=connector.id, status="pending")
     db_session.add(job)
@@ -302,7 +320,9 @@ async def test_rest_connector_ingestion_pipeline(
         EntityTypeCreate(
             name=f"Company-{uuid.uuid4().hex[:6]}",
             properties=[
-                PropertyDefinitionCreate(name="company_name", data_type="string", required=True),
+                PropertyDefinitionCreate(
+                    name="company_name", data_type="string", required=True
+                ),
                 PropertyDefinitionCreate(name="employee_count", data_type="integer"),
             ],
         ),
@@ -335,12 +355,14 @@ async def test_rest_connector_ingestion_pipeline(
     db_session.add(job)
     await db_session.flush()
 
-    api_response = _make_response({
-        "results": [
-            {"name": "Acme Corp", "employees": 150},
-            {"name": "Widgets Inc", "employees": 42},
-        ]
-    })
+    api_response = _make_response(
+        {
+            "results": [
+                {"name": "Acme Corp", "employees": 150},
+                {"name": "Widgets Inc", "employees": 42},
+            ]
+        }
+    )
 
     original_create = ingestion_module._create_connector_instance
 

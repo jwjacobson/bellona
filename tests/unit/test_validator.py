@@ -183,7 +183,9 @@ def test_coerce_datetime_invalid():
 
 
 def test_coerce_enum_passes_through():
-    props = [make_prop("status", "enum", constraints={"values": ["active", "inactive"]})]
+    props = [
+        make_prop("status", "enum", constraints={"values": ["active", "inactive"]})
+    ]
     result = validate_record({"status": "active"}, props)
     assert result.valid is True
     assert result.coerced["status"] == "active"
@@ -194,7 +196,6 @@ def test_coerce_json_passes_through():
     result = validate_record({"meta": {"key": "value"}}, props)
     assert result.valid is True
     assert result.coerced["meta"] == {"key": "value"}
-
 
 
 # ── Null sentinel coercion ───────────────────────────────────────────────────
@@ -266,7 +267,9 @@ def test_sentinel_on_string_passes_through():
 
 def test_sentinel_on_enum_not_coerced():
     """Sentinel values should NOT be coerced for enum fields."""
-    props = [make_prop("status", "enum", constraints={"values": ["active", "inactive"]})]
+    props = [
+        make_prop("status", "enum", constraints={"values": ["active", "inactive"]})
+    ]
     result = validate_record({"status": "unknown"}, props)
     assert result.valid is False
 
@@ -343,13 +346,21 @@ def test_constraint_pattern():
 
 
 def test_constraint_enum_valid():
-    props = [make_prop("status", "enum", constraints={"values": ["active", "inactive", "pending"]})]
+    props = [
+        make_prop(
+            "status", "enum", constraints={"values": ["active", "inactive", "pending"]}
+        )
+    ]
     result = validate_record({"status": "active"}, props)
     assert result.valid is True
 
 
 def test_constraint_enum_invalid():
-    props = [make_prop("status", "enum", constraints={"values": ["active", "inactive", "pending"]})]
+    props = [
+        make_prop(
+            "status", "enum", constraints={"values": ["active", "inactive", "pending"]}
+        )
+    ]
     result = validate_record({"status": "deleted"}, props)
     assert result.valid is False
     assert any("not in allowed values" in e.message for e in result.errors)

@@ -1,4 +1,5 @@
 """Discovery Agent: explores REST APIs to discover resources, pagination, and auth."""
+
 import json
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -24,30 +25,36 @@ async def http_get(url: str, headers: dict[str, str] | None = None) -> str:
             response = await client.get(url, headers=headers or {})
             try:
                 body = response.json()
-            except (json.JSONDecodeError, ValueError):
+            except json.JSONDecodeError, ValueError:
                 body = response.text
-            return json.dumps({
-                "status_code": response.status_code,
-                "headers": dict(response.headers),
-                "body": body,
-                "url": str(response.url),
-            })
+            return json.dumps(
+                {
+                    "status_code": response.status_code,
+                    "headers": dict(response.headers),
+                    "body": body,
+                    "url": str(response.url),
+                }
+            )
     except httpx.TimeoutException:
-        return json.dumps({
-            "status_code": 0,
-            "headers": {},
-            "body": "Request timed out after 30 seconds",
-            "url": url,
-            "error": "timeout",
-        })
+        return json.dumps(
+            {
+                "status_code": 0,
+                "headers": {},
+                "body": "Request timed out after 30 seconds",
+                "url": url,
+                "error": "timeout",
+            }
+        )
     except httpx.RequestError as exc:
-        return json.dumps({
-            "status_code": 0,
-            "headers": {},
-            "body": f"Request failed: {exc}",
-            "url": url,
-            "error": "request_error",
-        })
+        return json.dumps(
+            {
+                "status_code": 0,
+                "headers": {},
+                "body": f"Request failed: {exc}",
+                "url": url,
+                "error": "request_error",
+            }
+        )
 
 
 async def extract_jsonpath(data: str, path: str) -> str:
@@ -65,7 +72,9 @@ async def extract_jsonpath(data: str, path: str) -> str:
 async def infer_schema(records_json: str) -> str:
     """Infer schema from a JSON array of records. Returns field names, types, and required status."""
     try:
-        records = json.loads(records_json) if isinstance(records_json, str) else records_json
+        records = (
+            json.loads(records_json) if isinstance(records_json, str) else records_json
+        )
         if not isinstance(records, list) or len(records) == 0:
             return json.dumps({"fields": [], "record_count": 0})
 
@@ -87,11 +96,13 @@ async def infer_schema(records_json: str) -> str:
         for name in field_types:
             types = field_types[name] - {"null"}
             inferred = types.pop() if len(types) == 1 else "string"
-            fields.append({
-                "name": name,
-                "type": inferred,
-                "required": field_counts[name] == total,
-            })
+            fields.append(
+                {
+                    "name": name,
+                    "type": inferred,
+                    "required": field_counts[name] == total,
+                }
+            )
 
         return json.dumps({"fields": fields, "record_count": total})
     except Exception as exc:
@@ -115,10 +126,16 @@ def _infer_type(value: Any) -> str:
     return "string"
 
 
-async def detect_pagination(response_json: str, url: str, record_count: int | None = None) -> str:
+async def detect_pagination(
+    response_json: str, url: str, record_count: int | None = None
+) -> str:
     """Analyze an API response for pagination signals."""
     try:
-        data = json.loads(response_json) if isinstance(response_json, str) else response_json
+        data = (
+            json.loads(response_json)
+            if isinstance(response_json, str)
+            else response_json
+        )
         body = data.get("body", data) if isinstance(data, dict) else data
         headers = data.get("headers", {}) if isinstance(data, dict) else {}
 
@@ -182,11 +199,13 @@ async def detect_pagination(response_json: str, url: str, record_count: int | No
             strategy = "none"
             confidence = "medium"
 
-        return json.dumps({
-            "detected_strategy": strategy,
-            "confidence": confidence,
-            "signals": signals,
-        })
+        return json.dumps(
+            {
+                "detected_strategy": strategy,
+                "confidence": confidence,
+                "signals": signals,
+            }
+        )
     except Exception as exc:
         return json.dumps({"error": str(exc)})
 

@@ -110,7 +110,6 @@ class RESTConnector(BaseConnector):
                     found.append(v)
         return found
 
-
     async def connect(self) -> ConnectionStatus:
         url = self._build_url()
         try:
@@ -160,14 +159,18 @@ class RESTConnector(BaseConnector):
             values = [r[key] for r in records if key in r]
             nullable = any(v is None for v in values) or len(values) < len(records)
             sentinels = self._detect_sentinels(values)
-            clean_values = [v for v in values if not (isinstance(v, str) and v.lower().strip() in _NULL_SENTINELS)]
+            clean_values = [
+                v
+                for v in values
+                if not (isinstance(v, str) and v.lower().strip() in _NULL_SENTINELS)
+            ]
             fields.append(
                 SchemaField(
                     name=key,
                     inferred_type=self._infer_type_from_samples(clean_values),
                     nullable=nullable or bool(sentinels),
                     sample_values=[v for v in values[:5] if v is not None],
-                    null_sentinels=sentinels
+                    null_sentinels=sentinels,
                 )
             )
         return SchemaDiscovery(fields=fields)

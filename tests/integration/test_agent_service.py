@@ -1,4 +1,5 @@
 """Integration tests for the agent service layer. Agent LLM calls are mocked."""
+
 import uuid
 from unittest.mock import AsyncMock
 
@@ -23,7 +24,7 @@ from bellona.services.agent_service import (
     propose_mapping,
     propose_schema,
     reject_proposal,
-    ProposalError
+    ProposalError,
 )
 from bellona.services.entity_type import create_entity_type
 from bellona.services.ingestion import create_connector
@@ -43,14 +44,19 @@ async def test_propose_mapping_creates_agent_proposal(
     csv_file = tmp_path / "test.csv"
     csv_file.write_text(SAMPLE_CSV)
     connector = await create_connector(
-        db_session, "csv", f"pm-conn-{uuid.uuid4().hex[:4]}", {"file_path": str(csv_file)}
+        db_session,
+        "csv",
+        f"pm-conn-{uuid.uuid4().hex[:4]}",
+        {"file_path": str(csv_file)},
     )
     et = await create_entity_type(
         db_session,
         EntityTypeCreate(
             name=f"PM-{uuid.uuid4().hex[:6]}",
             properties=[
-                PropertyDefinitionCreate(name="name", data_type="string", required=True),
+                PropertyDefinitionCreate(
+                    name="name", data_type="string", required=True
+                ),
                 PropertyDefinitionCreate(name="age", data_type="integer"),
             ],
         ),
@@ -60,10 +66,16 @@ async def test_propose_mapping_creates_agent_proposal(
     mock_proposal = MappingProposalContent(
         mappings=[
             FieldMappingProposedEntry(
-                source_field="name", target_property="name", confidence=0.95, reasoning="obvious"
+                source_field="name",
+                target_property="name",
+                confidence=0.95,
+                reasoning="obvious",
             ),
             FieldMappingProposedEntry(
-                source_field="age", target_property="age", confidence=0.90, reasoning="obvious"
+                source_field="age",
+                target_property="age",
+                confidence=0.90,
+                reasoning="obvious",
             ),
         ],
         overall_confidence=0.92,
@@ -88,6 +100,7 @@ async def test_propose_mapping_creates_agent_proposal(
 
 async def test_propose_mapping_404_connector(db_session: AsyncSession) -> None:
     from bellona.services.agent_service import ProposalError
+
     with pytest.raises(ProposalError, match="Connector"):
         await propose_mapping(
             db=db_session,
@@ -100,10 +113,14 @@ async def test_propose_mapping_404_entity_type(
     db_session: AsyncSession, tmp_path
 ) -> None:
     from bellona.services.agent_service import ProposalError
+
     csv_file = tmp_path / "test2.csv"
     csv_file.write_text(SAMPLE_CSV)
     connector = await create_connector(
-        db_session, "csv", f"pm-404-{uuid.uuid4().hex[:4]}", {"file_path": str(csv_file)}
+        db_session,
+        "csv",
+        f"pm-404-{uuid.uuid4().hex[:4]}",
+        {"file_path": str(csv_file)},
     )
     await db_session.flush()
 
@@ -124,7 +141,10 @@ async def test_propose_schema_creates_agent_proposal(
     csv_file = tmp_path / "stocks.csv"
     csv_file.write_text("ticker,price\nAAPL,150\nGOOG,2800\n")
     connector = await create_connector(
-        db_session, "csv", f"ps-conn-{uuid.uuid4().hex[:4]}", {"file_path": str(csv_file)}
+        db_session,
+        "csv",
+        f"ps-conn-{uuid.uuid4().hex[:4]}",
+        {"file_path": str(csv_file)},
     )
     await db_session.flush()
 
@@ -132,7 +152,9 @@ async def test_propose_schema_creates_agent_proposal(
         entity_type_name="StockPrice",
         description="Stock price record",
         properties=[
-            ProposedPropertyDefinition(name="ticker", data_type="string", required=True),
+            ProposedPropertyDefinition(
+                name="ticker", data_type="string", required=True
+            ),
             ProposedPropertyDefinition(name="price", data_type="float", required=True),
         ],
         reasoning="These fields describe stock prices.",
@@ -162,7 +184,10 @@ async def test_confirm_mapping_proposal_creates_field_mapping(
     csv_file = tmp_path / "confirm_test.csv"
     csv_file.write_text(SAMPLE_CSV)
     connector = await create_connector(
-        db_session, "csv", f"cm-conn-{uuid.uuid4().hex[:4]}", {"file_path": str(csv_file)}
+        db_session,
+        "csv",
+        f"cm-conn-{uuid.uuid4().hex[:4]}",
+        {"file_path": str(csv_file)},
     )
     et = await create_entity_type(
         db_session,
@@ -177,7 +202,14 @@ async def test_confirm_mapping_proposal_creates_field_mapping(
         proposal_type="mapping",
         status="proposed",
         content={
-            "mappings": [{"source_field": "name", "target_property": "name", "confidence": 0.9, "reasoning": "ok"}],
+            "mappings": [
+                {
+                    "source_field": "name",
+                    "target_property": "name",
+                    "confidence": 0.9,
+                    "reasoning": "ok",
+                }
+            ],
             "overall_confidence": 0.9,
             "notes": "",
         },
@@ -202,10 +234,16 @@ async def test_confirm_mapping_proposal_creates_field_mapping(
 
 async def test_confirm_mapping_proposal_wrong_type(db_session: AsyncSession) -> None:
     from bellona.services.agent_service import ProposalError
+
     proposal = AgentProposal(
         proposal_type="entity_type",
         status="proposed",
-        content={"entity_type_name": "Foo", "properties": [], "reasoning": "", "confidence": 0.5},
+        content={
+            "entity_type_name": "Foo",
+            "properties": [],
+            "reasoning": "",
+            "confidence": 0.5,
+        },
         confidence=0.5,
     )
     db_session.add(proposal)
@@ -229,8 +267,18 @@ async def test_confirm_schema_proposal_creates_entity_type(
             "entity_type_name": unique_name,
             "description": "Agent-proposed entity type",
             "properties": [
-                {"name": "ticker", "data_type": "string", "required": True, "description": "Symbol"},
-                {"name": "price", "data_type": "float", "required": False, "description": "Price"},
+                {
+                    "name": "ticker",
+                    "data_type": "string",
+                    "required": True,
+                    "description": "Symbol",
+                },
+                {
+                    "name": "price",
+                    "data_type": "float",
+                    "required": False,
+                    "description": "Price",
+                },
             ],
             "reasoning": "Makes sense",
             "confidence": 0.88,
@@ -252,6 +300,7 @@ async def test_confirm_schema_proposal_creates_entity_type(
 
 async def test_confirm_schema_proposal_wrong_type(db_session: AsyncSession) -> None:
     from bellona.services.agent_service import ProposalError
+
     proposal = AgentProposal(
         proposal_type="mapping",
         status="proposed",
@@ -278,6 +327,7 @@ async def test_confirm_already_confirmed_proposal(db_session: AsyncSession) -> N
     with pytest.raises(ProposalError, match="already"):
         await confirm_mapping_proposal(db_session, proposal.id)
 
+
 # ── reject_proposal ────────────────────────────────────────────────────────────
 
 
@@ -298,6 +348,7 @@ async def test_reject_proposal(db_session: AsyncSession) -> None:
 
 async def test_reject_nonexistent_proposal(db_session: AsyncSession) -> None:
     from bellona.services.agent_service import ProposalError
+
     with pytest.raises(ProposalError, match="not found"):
         await reject_proposal(db_session, uuid.uuid4())
 
@@ -315,14 +366,21 @@ async def test_reject_already_confirmed_proposal(db_session: AsyncSession) -> No
     with pytest.raises(ProposalError, match="already"):
         await reject_proposal(db_session, proposal.id)
 
+
 # ── list_proposals ─────────────────────────────────────────────────────────────
 
 
 async def test_list_proposals_returns_only_proposed(db_session: AsyncSession) -> None:
     base_content = {"mappings": [], "overall_confidence": 0.5, "notes": ""}
-    proposed = AgentProposal(proposal_type="mapping", status="proposed", content=base_content)
-    confirmed = AgentProposal(proposal_type="mapping", status="confirmed", content=base_content)
-    rejected = AgentProposal(proposal_type="entity_type", status="rejected", content=base_content)
+    proposed = AgentProposal(
+        proposal_type="mapping", status="proposed", content=base_content
+    )
+    confirmed = AgentProposal(
+        proposal_type="mapping", status="confirmed", content=base_content
+    )
+    rejected = AgentProposal(
+        proposal_type="entity_type", status="rejected", content=base_content
+    )
     db_session.add_all([proposed, confirmed, rejected])
     await db_session.flush()
 
@@ -339,12 +397,15 @@ async def test_list_proposals_returns_only_proposed(db_session: AsyncSession) ->
 
 async def test_check_quality_returns_report(db_session: AsyncSession) -> None:
     from bellona.schemas.agents import QualityReport
+
     et = await create_entity_type(
         db_session,
         EntityTypeCreate(
             name=f"QA-{uuid.uuid4().hex[:6]}",
             properties=[
-                PropertyDefinitionCreate(name="name", data_type="string", required=True),
+                PropertyDefinitionCreate(
+                    name="name", data_type="string", required=True
+                ),
                 PropertyDefinitionCreate(name="score", data_type="float"),
             ],
         ),

@@ -25,7 +25,9 @@ async def create(data: RelationshipTypeCreate, db: AsyncSession = Depends(get_db
         await db.commit()
         return rel_type
     except ValueError as exc:
-        logger.warning("relationship type creation failed: entity type not found", name=data.name)
+        logger.warning(
+            "relationship type creation failed: entity type not found", name=data.name
+        )
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except IntegrityError:
         logger.warning("relationship type already exists", name=data.name)

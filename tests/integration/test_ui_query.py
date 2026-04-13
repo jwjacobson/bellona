@@ -1,4 +1,5 @@
 """UI tests for the natural language query interface."""
+
 import pytest
 from httpx import AsyncClient
 

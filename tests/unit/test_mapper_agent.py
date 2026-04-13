@@ -1,4 +1,5 @@
 """Unit tests for MapperAgent. Agno/LLM calls are fully mocked."""
+
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -10,9 +11,24 @@ from bellona.schemas.agents import FieldMappingProposedEntry, MappingProposalCon
 
 SAMPLE_SCHEMA = SchemaDiscovery(
     fields=[
-        SchemaField(name="full_name", inferred_type="string", nullable=False, sample_values=["Alice", "Bob"]),
-        SchemaField(name="years_old", inferred_type="integer", nullable=True, sample_values=[30, 25]),
-        SchemaField(name="email_addr", inferred_type="string", nullable=True, sample_values=["a@example.com"]),
+        SchemaField(
+            name="full_name",
+            inferred_type="string",
+            nullable=False,
+            sample_values=["Alice", "Bob"],
+        ),
+        SchemaField(
+            name="years_old",
+            inferred_type="integer",
+            nullable=True,
+            sample_values=[30, 25],
+        ),
+        SchemaField(
+            name="email_addr",
+            inferred_type="string",
+            nullable=True,
+            sample_values=["a@example.com"],
+        ),
     ],
     record_count_estimate=100,
 )
@@ -22,9 +38,24 @@ SAMPLE_ENTITY_TYPES = [
         "name": "Person",
         "description": "A human being",
         "properties": [
-            {"name": "name", "data_type": "string", "required": True, "description": "Full name"},
-            {"name": "age", "data_type": "integer", "required": False, "description": "Age in years"},
-            {"name": "email", "data_type": "string", "required": False, "description": "Email address"},
+            {
+                "name": "name",
+                "data_type": "string",
+                "required": True,
+                "description": "Full name",
+            },
+            {
+                "name": "age",
+                "data_type": "integer",
+                "required": False,
+                "description": "Age in years",
+            },
+            {
+                "name": "email",
+                "data_type": "string",
+                "required": False,
+                "description": "Email address",
+            },
         ],
     }
 ]

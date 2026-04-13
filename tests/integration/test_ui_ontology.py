@@ -1,4 +1,5 @@
 """UI tests for the ontology browser."""
+
 import pytest
 from httpx import AsyncClient
 
@@ -57,7 +58,12 @@ async def test_add_property_redirects(client: AsyncClient) -> None:
 
     response = await client.post(
         f"/ui/ontology/entity-types/{entity_type_id}/properties",
-        data={"name": "revenue", "data_type": "float", "required": "false", "description": ""},
+        data={
+            "name": "revenue",
+            "data_type": "float",
+            "required": "false",
+            "description": "",
+        },
         follow_redirects=False,
     )
     assert response.status_code == 303

@@ -1,4 +1,5 @@
 """UI tests for the relationship graph visualization."""
+
 import pytest
 from httpx import AsyncClient
 

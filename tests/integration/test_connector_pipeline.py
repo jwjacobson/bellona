@@ -1,4 +1,5 @@
 """Tests for connector pipeline status and jobs fragment route."""
+
 import uuid
 
 import pytest
@@ -14,7 +15,9 @@ pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 async def _create_connector(db: AsyncSession, name: str = "pipeline-test") -> Connector:
     connector = await create_connector(
-        db, "rest_api", name,
+        db,
+        "rest_api",
+        name,
         {
             "base_url": "https://example.com",
             "endpoint": "/data",
@@ -151,6 +154,7 @@ async def test_jobs_fragment_shows_completed_job(
 ) -> None:
     connector = await _create_connector(db_session, "jobs-fragment-completed")
     from datetime import datetime, UTC
+
     job = IngestionJob(
         connector_id=connector.id,
         status="completed",
@@ -182,6 +186,7 @@ async def test_jobs_fragment_shows_running_job(
 ) -> None:
     connector = await _create_connector(db_session, "jobs-fragment-running")
     from datetime import datetime, UTC
+
     job = IngestionJob(
         connector_id=connector.id,
         status="running",

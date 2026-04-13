@@ -1,4 +1,5 @@
 """Unit tests for QualityAgent. Agno/LLM calls are fully mocked."""
+
 from unittest.mock import AsyncMock
 
 import pytest
@@ -17,9 +18,15 @@ SAMPLE_ENTITY_TYPE = {
 }
 
 SAMPLE_ENTITIES = [
-    {"id": "1", "properties": {"name": "Alice", "age": 30, "email": "alice@example.com"}},
+    {
+        "id": "1",
+        "properties": {"name": "Alice", "age": 30, "email": "alice@example.com"},
+    },
     {"id": "2", "properties": {"name": "Bob", "age": None, "email": "bob@example.com"}},
-    {"id": "3", "properties": {"name": "Alice", "age": 30, "email": "alice2@example.com"}},
+    {
+        "id": "3",
+        "properties": {"name": "Alice", "age": 30, "email": "alice2@example.com"},
+    },
     {"id": "4", "properties": {"name": "Dave", "age": 999, "email": None}},
 ]
 

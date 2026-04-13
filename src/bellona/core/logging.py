@@ -68,7 +68,9 @@ def setup_logging(
         logging.getLogger(noisy).setLevel(max(log_level, logging.WARNING))
 
 
-def bind_job_context(job_id: str, connector_id: str | None = None) -> structlog.stdlib.BoundLogger:
+def bind_job_context(
+    job_id: str, connector_id: str | None = None
+) -> structlog.stdlib.BoundLogger:
     """
     Convenience for ingestion jobs: returns a logger with job_id and
     connector_id pre-bound so every subsequent log line includes them.

@@ -1,4 +1,5 @@
 """Integration tests for discovery API endpoints."""
+
 import uuid
 from unittest.mock import AsyncMock, patch
 
@@ -35,7 +36,12 @@ MOCK_DISCOVERY = DiscoveryProposalContent(
             ),
             sample_record={"name": "Luke Skywalker"},
             schema_summary=[
-                FieldSummary(name="name", inferred_type="string", required=True, sample_values=["Luke Skywalker"]),
+                FieldSummary(
+                    name="name",
+                    inferred_type="string",
+                    required=True,
+                    sample_values=["Luke Skywalker"],
+                ),
             ],
             record_count_estimate=82,
         ),
@@ -50,7 +56,12 @@ MOCK_DISCOVERY = DiscoveryProposalContent(
             ),
             sample_record={"name": "Tatooine"},
             schema_summary=[
-                FieldSummary(name="name", inferred_type="string", required=True, sample_values=["Tatooine"]),
+                FieldSummary(
+                    name="name",
+                    inferred_type="string",
+                    required=True,
+                    sample_values=["Tatooine"],
+                ),
             ],
             record_count_estimate=60,
         ),
@@ -58,7 +69,9 @@ MOCK_DISCOVERY = DiscoveryProposalContent(
 )
 
 
-async def test_discover_api_endpoint(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_discover_api_endpoint(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     with patch("bellona.services.agent_service.DiscoveryAgent") as mock_cls:
         instance = mock_cls.return_value
         instance.discover = AsyncMock(return_value=MOCK_DISCOVERY)
@@ -76,7 +89,9 @@ async def test_discover_api_endpoint(client: AsyncClient, db_session: AsyncSessi
     assert len(data["content"]["resources"]) == 2
 
 
-async def test_confirm_discovery_endpoint(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_confirm_discovery_endpoint(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     # Create proposal via mock
     with patch("bellona.services.agent_service.DiscoveryAgent") as mock_cls:
         instance = mock_cls.return_value
@@ -99,7 +114,9 @@ async def test_confirm_discovery_endpoint(client: AsyncClient, db_session: Async
     assert connectors[0]["config"]["endpoint"] == "/people/"
 
 
-async def test_confirm_with_selection(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_confirm_with_selection(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     with patch("bellona.services.agent_service.DiscoveryAgent") as mock_cls:
         instance = mock_cls.return_value
         instance.discover = AsyncMock(return_value=MOCK_DISCOVERY)
@@ -121,7 +138,9 @@ async def test_confirm_with_selection(client: AsyncClient, db_session: AsyncSess
     assert connectors[0]["name"] == "people (https://swapi.dev/api/)"
 
 
-async def test_generic_confirm_dispatches_discovery(client: AsyncClient, db_session: AsyncSession) -> None:
+async def test_generic_confirm_dispatches_discovery(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     with patch("bellona.services.agent_service.DiscoveryAgent") as mock_cls:
         instance = mock_cls.return_value
         instance.discover = AsyncMock(return_value=MOCK_DISCOVERY)

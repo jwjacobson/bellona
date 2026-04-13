@@ -51,7 +51,13 @@ async def test_connect_missing_file() -> None:
 
 async def test_discover_schema_field_names(connector: CSVConnector) -> None:
     schema = await connector.discover_schema()
-    assert [f.name for f in schema.fields] == ["name", "age", "salary", "active", "joined"]
+    assert [f.name for f in schema.fields] == [
+        "name",
+        "age",
+        "salary",
+        "active",
+        "joined",
+    ]
 
 
 async def test_discover_schema_infers_string(connector: CSVConnector) -> None:

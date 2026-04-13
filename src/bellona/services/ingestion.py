@@ -35,7 +35,12 @@ async def create_connector(
     connector = Connector(type=connector_type, name=name, config=config)
     db.add(connector)
     await db.flush()
-    logger.info("connector created", connector_id=str(connector.id), type=connector_type, name=name)
+    logger.info(
+        "connector created",
+        connector_id=str(connector.id),
+        type=connector_type,
+        name=name,
+    )
     return connector
 
 
@@ -74,15 +79,21 @@ async def create_field_mapping(
     return mapping
 
 
-async def get_field_mapping(db: AsyncSession, mapping_id: uuid.UUID) -> FieldMapping | None:
+async def get_field_mapping(
+    db: AsyncSession, mapping_id: uuid.UUID
+) -> FieldMapping | None:
     return await db.get(FieldMapping, mapping_id)
 
 
-async def create_ingestion_job(db: AsyncSession, connector_id: uuid.UUID) -> IngestionJob:
+async def create_ingestion_job(
+    db: AsyncSession, connector_id: uuid.UUID
+) -> IngestionJob:
     job = IngestionJob(connector_id=connector_id, status="pending")
     db.add(job)
     await db.flush()
-    logger.info("ingestion job queued", job_id=str(job.id), connector_id=str(connector_id))
+    logger.info(
+        "ingestion job queued", job_id=str(job.id), connector_id=str(connector_id)
+    )
     return job
 
 
@@ -147,7 +158,9 @@ def _serialize_for_json(props: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-async def _load_entity_type(db: AsyncSession, entity_type_id: uuid.UUID) -> EntityType | None:
+async def _load_entity_type(
+    db: AsyncSession, entity_type_id: uuid.UUID
+) -> EntityType | None:
     res = await db.execute(
         select(EntityType)
         .where(EntityType.id == entity_type_id)
@@ -236,7 +249,9 @@ async def _execute_ingestion_job(job_id: uuid.UUID, db: AsyncSession) -> None:
                     properties=props,
                     schema_version=entity_type.schema_version,
                     source_connector_id=connector_model.id,
-                    source_record_id=source_record.source_metadata.get("source_identifier"),
+                    source_record_id=source_record.source_metadata.get(
+                        "source_identifier"
+                    ),
                 )
                 db.add(entity)
                 records_processed += 1
@@ -254,7 +269,9 @@ async def _execute_ingestion_job(job_id: uuid.UUID, db: AsyncSession) -> None:
                 logger.debug(
                     "record validation failed",
                     record_index=records_processed + records_failed - 1,
-                    errors=[{"field": e.field, "message": e.message} for e in result.errors],
+                    errors=[
+                        {"field": e.field, "message": e.message} for e in result.errors
+                    ],
                 )
 
         await db.flush()
@@ -291,7 +308,9 @@ async def run_ingestion_job(job_id: uuid.UUID) -> None:
             await db.commit()
         except Exception:
             await db.rollback()
-            logger.error("ingestion background task failed", job_id=str(job_id), exc_info=True)
+            logger.error(
+                "ingestion background task failed", job_id=str(job_id), exc_info=True
+            )
             raise
 
 
@@ -301,17 +320,14 @@ async def delete_connector(db: AsyncSession, connector_id: uuid.UUID) -> None:
     connector = await db.get(Connector, connector_id)
     if connector is None:
         raise ValueError("Connector not found")
- 
+
     name = connector.name
     await db.delete(connector)
     await db.flush()
- 
-    logger.info(
-        "connector deleted", connector_id=str(connector_id), name=name
-    )
+
+    logger.info("connector deleted", connector_id=str(connector_id), name=name)
 
 
-     
 async def patch_connector(
     db: AsyncSession, connector: Connector, data: ConnectorPatch
 ) -> Connector:

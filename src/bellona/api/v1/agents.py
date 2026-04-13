@@ -61,7 +61,6 @@ async def propose_mapping_endpoint(
     return proposal  # type: ignore[return-value]
 
 
-
 # ── Schema Agent ──────────────────────────────────────────────────────────────
 
 

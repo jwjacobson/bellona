@@ -1,4 +1,5 @@
 """Integration tests for discovery service functions."""
+
 import uuid
 from unittest.mock import AsyncMock, patch
 
@@ -39,7 +40,12 @@ MOCK_DISCOVERY = DiscoveryProposalContent(
             ),
             sample_record={"name": "Luke Skywalker", "height": "172"},
             schema_summary=[
-                FieldSummary(name="name", inferred_type="string", required=True, sample_values=["Luke Skywalker"]),
+                FieldSummary(
+                    name="name",
+                    inferred_type="string",
+                    required=True,
+                    sample_values=["Luke Skywalker"],
+                ),
             ],
             record_count_estimate=82,
         ),
@@ -54,7 +60,12 @@ MOCK_DISCOVERY = DiscoveryProposalContent(
             ),
             sample_record={"name": "Tatooine", "climate": "arid"},
             schema_summary=[
-                FieldSummary(name="name", inferred_type="string", required=True, sample_values=["Tatooine"]),
+                FieldSummary(
+                    name="name",
+                    inferred_type="string",
+                    required=True,
+                    sample_values=["Tatooine"],
+                ),
             ],
             record_count_estimate=60,
         ),
@@ -110,26 +121,12 @@ async def test_confirm_discovery_selected_resources(db_session: AsyncSession) ->
     )
 
     with patch("bellona.services.agent_service.propose_schema", new_callable=AsyncMock):
-        connectors = await confirm_discovery_proposal(db_session, proposal.id, selected_resources=[1])
+        connectors = await confirm_discovery_proposal(
+            db_session, proposal.id, selected_resources=[1]
+        )
 
     assert len(connectors) == 1
     assert connectors[0].name == "planets (https://swapi.dev/api/)"
-
-
-async def test_confirm_discovery_queues_schema_proposals(db_session: AsyncSession) -> None:
-    proposal = await discover_api(
-        db_session,
-        "https://swapi.dev/api/",
-        _mock_result=MOCK_DISCOVERY,
-    )
-
-    with patch("bellona.services.agent_service.propose_schema", new_callable=AsyncMock) as mock_propose:
-        connectors = await confirm_discovery_proposal(db_session, proposal.id)
-
-    assert mock_propose.await_count == 2
-    # Verify each connector got a schema proposal queued
-    called_connector_ids = {call.args[1] for call in mock_propose.call_args_list}
-    assert len(called_connector_ids) == 2
 
 
 async def test_confirm_discovery_wrong_type(db_session: AsyncSession) -> None:

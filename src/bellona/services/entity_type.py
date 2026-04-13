@@ -83,9 +83,17 @@ async def create_entity_type_gin_index(entity_type_id: uuid.UUID) -> None:
     try:
         async with engine.begin() as conn:
             await conn.execute(ddl)
-        logger.info("GIN index created", entity_type_id=str(entity_type_id), index_name=index_name)
+        logger.info(
+            "GIN index created",
+            entity_type_id=str(entity_type_id),
+            index_name=index_name,
+        )
     except Exception:
-        logger.warning("GIN index creation failed", entity_type_id=str(entity_type_id), exc_info=True)
+        logger.warning(
+            "GIN index creation failed",
+            entity_type_id=str(entity_type_id),
+            exc_info=True,
+        )
 
 
 async def patch_entity_type(
@@ -120,13 +128,14 @@ async def patch_entity_type(
     )
     return loaded
 
+
 async def delete_entity_type(db: AsyncSession, entity_type_id: uuid.UUID) -> None:
     """Delete an entity type. Raises IntegrityError if entities or relationship types
     still reference it (due to RESTRICT foreign keys)."""
     entity_type = await db.get(EntityType, entity_type_id)
     if entity_type is None:
         raise ValueError("Entity type not found")
- 
+
     name = entity_type.name
     await db.delete(entity_type)
     try:
@@ -134,30 +143,30 @@ async def delete_entity_type(db: AsyncSession, entity_type_id: uuid.UUID) -> Non
     except IntegrityError:
         await db.rollback()
         raise
- 
+
     logger.info("entity type deleted", entity_type_id=str(entity_type_id), name=name)
- 
- 
+
+
 async def delete_entity_type_cascade(
     db: AsyncSession, entity_type_id: uuid.UUID
 ) -> dict:
     """Delete an entity type and everything underneath it:
     relationships → entities → relationship types → field mappings → entity type.
- 
+
     Returns counts of what was deleted.
     """
     entity_type = await db.get(EntityType, entity_type_id)
     if entity_type is None:
         raise ValueError("Entity type not found")
- 
+
     name = entity_type.name
- 
+
     # 1. Get all entity IDs for this type
     entity_ids_result = await db.execute(
         select(Entity.id).where(Entity.entity_type_id == entity_type_id)
     )
     entity_ids = list(entity_ids_result.scalars().all())
- 
+
     # 2. Delete relationships involving these entities
     relationships_deleted = 0
     if entity_ids:
@@ -170,13 +179,13 @@ async def delete_entity_type_cascade(
             )
         )
         relationships_deleted = result.rowcount
- 
+
     # 3. Delete entities of this type
     result = await db.execute(
         sa_delete(Entity).where(Entity.entity_type_id == entity_type_id)
     )
     entities_deleted = result.rowcount
- 
+
     # 4. Delete relationship types that reference this entity type (as source or target)
     result = await db.execute(
         sa_delete(RelationshipType).where(
@@ -187,12 +196,12 @@ async def delete_entity_type_cascade(
         )
     )
     relationship_types_deleted = result.rowcount
- 
+
     # 5. Delete field mappings for this entity type
     await db.execute(
         sa_delete(FieldMapping).where(FieldMapping.entity_type_id == entity_type_id)
     )
- 
+
     # 6. Delete property definitions and entity type
     # (property_definitions cascade via ORM, but being explicit)
     await db.execute(
@@ -200,11 +209,9 @@ async def delete_entity_type_cascade(
             PropertyDefinition.entity_type_id == entity_type_id
         )
     )
-    await db.execute(
-        sa_delete(EntityType).where(EntityType.id == entity_type_id)
-    )
+    await db.execute(sa_delete(EntityType).where(EntityType.id == entity_type_id))
     await db.flush()
- 
+
     logger.info(
         "entity type cascade deleted",
         entity_type_id=str(entity_type_id),
@@ -213,7 +220,7 @@ async def delete_entity_type_cascade(
         entities_deleted=entities_deleted,
         relationship_types_deleted=relationship_types_deleted,
     )
- 
+
     return {
         "relationships_deleted": relationships_deleted,
         "entities_deleted": entities_deleted,

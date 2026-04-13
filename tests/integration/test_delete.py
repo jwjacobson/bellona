@@ -16,9 +16,7 @@ pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
 async def create_entity_type_via_api(client: AsyncClient, name: str, **kwargs) -> dict:
-    response = await client.post(
-        "/api/v1/entity-types", json={"name": name, **kwargs}
-    )
+    response = await client.post("/api/v1/entity-types", json={"name": name, **kwargs})
     assert response.status_code == 201
     return response.json()
 
@@ -82,13 +80,9 @@ async def test_delete_entity_type_cascade(client: AsyncClient):
         properties=[{"name": "val", "data_type": "string"}],
     )
     et2 = await create_entity_type_via_api(client, "CascadeTarget")
-    await create_relationship_type(
-        client, "cascade_rel", et["id"], et2["id"]
-    )
+    await create_relationship_type(client, "cascade_rel", et["id"], et2["id"])
 
-    response = await client.post(
-        f"/api/v1/entity-types/{et['id']}/cascade-delete"
-    )
+    response = await client.post(f"/api/v1/entity-types/{et['id']}/cascade-delete")
     assert response.status_code == 200
     data = response.json()
     assert data["entity_type_deleted"] == "CascadeMe"
@@ -99,11 +93,8 @@ async def test_delete_entity_type_cascade(client: AsyncClient):
 
 
 async def test_delete_entity_type_cascade_not_found(client: AsyncClient):
-    response = await client.post(
-        f"/api/v1/entity-types/{uuid.uuid4()}/cascade-delete"
-    )
+    response = await client.post(f"/api/v1/entity-types/{uuid.uuid4()}/cascade-delete")
     assert response.status_code == 404
-
 
 
 # ── Relationship Type Delete ──────────────────────────────────────────────────
@@ -171,13 +162,16 @@ async def test_delete_relationship_not_found(client: AsyncClient):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 async def _make_entity_type(db: AsyncSession, suffix: str) -> object:
     return await create_entity_type(
         db,
         EntityTypeCreate(
             name=f"Del-{suffix}-{uuid.uuid4().hex[:4]}",
             properties=[
-                PropertyDefinitionCreate(name="name", data_type="string", required=True),
+                PropertyDefinitionCreate(
+                    name="name", data_type="string", required=True
+                ),
             ],
         ),
     )
@@ -420,7 +414,11 @@ async def test_delete_connector_with_ingested_data(
 
     conn_response = await client.post(
         "/api/v1/connectors",
-        json={"type": "csv", "name": "doomed-connector", "config": {"file_path": "/tmp/x.csv"}},
+        json={
+            "type": "csv",
+            "name": "doomed-connector",
+            "config": {"file_path": "/tmp/x.csv"},
+        },
     )
     assert conn_response.status_code == 201
     conn_id = conn_response.json()["id"]

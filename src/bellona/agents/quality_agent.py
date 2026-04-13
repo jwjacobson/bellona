@@ -1,4 +1,5 @@
 """Quality Agent: checks data quality for entities of a given type."""
+
 import json
 from typing import Any
 
@@ -42,11 +43,16 @@ def _build_prompt(entity_type: dict[str, Any], entities: list[dict[str, Any]]) -
     entities_json = json.dumps(sample, indent=2, default=str)
 
     total = len(entities)
-    sample_note = f" (showing {len(sample)} of {total})" if total > _MAX_ENTITIES_IN_PROMPT else ""
+    sample_note = (
+        f" (showing {len(sample)} of {total})"
+        if total > _MAX_ENTITIES_IN_PROMPT
+        else ""
+    )
 
     return (
         f"ENTITY TYPE: {entity_type['name']}\n"
-        f"PROPERTIES:\n" + "\n".join(props_lines)
+        f"PROPERTIES:\n"
+        + "\n".join(props_lines)
         + f"\n\nENTITY RECORDS ({total} total{sample_note}):\n"
         + entities_json
         + "\n\nCheck the entity records for data quality issues."

@@ -1,4 +1,5 @@
 """UI tests for the agent proposals panel."""
+
 import uuid
 from unittest.mock import AsyncMock, patch
 
@@ -148,10 +149,12 @@ async def test_proposals_propose_mapping_redirects(client: AsyncClient) -> None:
     conn = conn_resp.json()
     et_resp = await client.post(
         "/api/v1/entity-types",
-        json={"name": "ProposalsMappingET", "properties": [{"name": "name", "data_type": "string"}]},
+        json={
+            "name": "ProposalsMappingET",
+            "properties": [{"name": "name", "data_type": "string"}],
+        },
     )
     et = et_resp.json()
-
 
     with patch("bellona.api.ui.proposals.propose_mapping") as mock_propose:
         mock_propose.return_value = AsyncMock()
@@ -163,7 +166,7 @@ async def test_proposals_propose_mapping_redirects(client: AsyncClient) -> None:
             },
             follow_redirects=False,
         )
- 
+
     assert response.status_code == 303
     assert response.headers["location"] == "/ui/proposals"
 
@@ -172,7 +175,7 @@ async def test_proposals_propose_mapping_shows_error_on_failure(
     client: AsyncClient,
 ) -> None:
     from bellona.services.agent_service import ProposalError
- 
+
     conn_resp = await client.post(
         "/api/v1/connectors",
         json={
@@ -189,10 +192,13 @@ async def test_proposals_propose_mapping_shows_error_on_failure(
     conn = conn_resp.json()
     et_resp = await client.post(
         "/api/v1/entity-types",
-        json={"name": "ProposalsFailET", "properties": [{"name": "x", "data_type": "string"}]},
+        json={
+            "name": "ProposalsFailET",
+            "properties": [{"name": "x", "data_type": "string"}],
+        },
     )
     et = et_resp.json()
- 
+
     with patch("bellona.api.ui.proposals.propose_mapping") as mock_propose:
         mock_propose.side_effect = ProposalError("Mapper agent failed: test error")
         response = await client.post(
@@ -202,6 +208,6 @@ async def test_proposals_propose_mapping_shows_error_on_failure(
                 "entity_type_id": et["id"],
             },
         )
- 
+
     assert response.status_code == 422
     assert "Mapper agent failed" in response.text
