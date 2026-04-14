@@ -74,8 +74,7 @@ class CSVConnector(BaseConnector):
 
     async def discover_schema(self, sample_size: int = 100) -> SchemaDiscovery:
         content = await self._read_content()
-        dialect = csv.Sniffer().sniff(content[:4096], delimiters=",;\t|")
-        reader = csv.DictReader(io.StringIO(content), dialect=dialect)
+        reader = csv.DictReader(io.StringIO(content), dialect=csv.excel)
 
         headers: list[str] = []
         samples: dict[str, list[str]] = {}
@@ -108,8 +107,7 @@ class CSVConnector(BaseConnector):
         source_identifier = str(self.file_path)
 
         def _parse() -> list[SourceRecord]:
-            dialect = csv.Sniffer().sniff(content[:4096], delimiters=",;\t|")
-            reader = csv.DictReader(io.StringIO(content), dialect=dialect)
+            reader = csv.DictReader(io.StringIO(content), dialect=csv.excel)
             return [
                 SourceRecord(
                     data={

@@ -140,19 +140,6 @@ async def test_fetch_records_source_metadata(connector: CSVConnector) -> None:
     assert "fetch_timestamp" in meta
 
 
-# ── Delimiter detection ───────────────────────────────────────────────────────
-
-
-async def test_tab_delimited(tmp_path: Path) -> None:
-    f = tmp_path / "tab.csv"
-    f.write_text("name\tscore\nAlice\t100\nBob\t95\n")
-    c = CSVConnector(uuid.uuid4(), str(f), "tab-test")
-    schema = await c.discover_schema()
-    assert len(schema.fields) == 2
-    assert schema.fields[0].name == "name"
-    assert schema.fields[1].inferred_type == "integer"
-
-
 # ── Encoding detection ────────────────────────────────────────────────────────
 
 
