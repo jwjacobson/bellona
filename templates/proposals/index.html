@@ -22,7 +22,7 @@
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-3 mb-1">
               <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 bg-stone-700
-                           {% if proposal.proposal_type == 'mapping' %}text-emerald-700{% elif proposal.proposal_type == 'discovery' %}text-sky-400{% else %}text-amber-400{% endif %}">
+                           {% if proposal.proposal_type == 'mapping' %}text-emerald-700{% elif proposal.proposal_type == 'discovery' %}text-sky-400{% elif proposal.proposal_type == 'relationship' %}text-fuchsia-400{% else %}text-amber-400{% endif %}">
                 {{ proposal.proposal_type }}
               </span>
               <span class="text-xs
@@ -176,6 +176,42 @@
                 {% endfor %}
               </div>
               {% endif %}
+              {% if proposal.content.get('potential_relationships') %}
+              <p class="text-xs text-stone-400 mt-3 mb-1">Potential relationships detected:</p>
+              <div class="space-y-1">
+                {% for s in proposal.content['potential_relationships'] %}
+                <div class="text-xs font-mono">
+                  <span class="text-stone-300">{{ s.source_field }}</span>
+                  <span class="text-stone-500 mx-1">→</span>
+                  <span class="text-fuchsia-400">{{ s.target_entity_type_name }}</span>
+                  <span class="text-stone-500 ml-2 italic">{{ s.basis }}</span>
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- ── Relationship proposal ── -->
+            {% elif proposal.proposal_type == 'relationship' %}
+            <div class="mt-2">
+              <p class="text-xs text-stone-400 mb-1">Proposed relationships:</p>
+              <div class="space-y-1">
+                {% for r in proposal.content.get('relationships', []) %}
+                <div class="text-xs font-mono">
+                  <span class="text-stone-300">{{ r.source_entity_type }}</span>
+                  <span class="text-stone-500 mx-1">.{{ r.source_field }} →</span>
+                  <span class="text-fuchsia-400">{{ r.target_entity_type }}</span>
+                  <span class="text-emerald-700 ml-2">{{ r.relationship_name }}</span>
+                  <span class="text-amber-400 ml-2">{{ r.cardinality }}</span>
+                  {% if r.confidence is defined %}
+                  <span class="text-stone-500 ml-2">({{ "%.0f"|format(r.confidence * 100) }}%)</span>
+                  {% endif %}
+                </div>
+                {% if r.reasoning %}
+                <p class="text-xs text-stone-500 italic ml-4">{{ r.reasoning }}</p>
+                {% endif %}
+                {% endfor %}
+              </div>
             </div>
             {% endif %}
 
@@ -256,6 +292,32 @@
     <p class="text-stone-500 text-sm">No connectors yet. Create one in the <a href="/ui/connectors" class="text-emerald-600 hover:text-emerald-500">Connectors</a> panel.</p>
     {% endif %}
 
+    {% if schema_proposals_with_signals %}
+    <h2 class="text-base font-bold tracking-wide text-stone-100 mb-3 mt-6">Propose Relationships</h2>
+    <p class="text-xs text-stone-400 mb-3">
+      Confirmed schemas with detected relationship signals. Run the Relationship Agent
+      to produce formal proposals.
+    </p>
+    <form method="post" action="/ui/proposals/propose-relationships" class="space-y-3">
+      <div>
+        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Schema Proposal *</label>
+        <select name="schema_proposal_id"
+                class="w-full bg-stone-800 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-fuchsia-500">
+          {% for sp in schema_proposals_with_signals %}
+          <option value="{{ sp.id }}">
+            {{ sp.content.get('entity_type_name', '—') }}
+            ({{ sp.content.get('potential_relationships') | length }} signal{{ 's' if sp.content.get('potential_relationships') | length != 1 }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit"
+              class="w-full bg-fuchsia-700 hover:bg-fuchsia-600 text-white text-sm font-medium py-2 px-4 border border-fuchsia-600">
+        Propose Relationships
+      </button>
+    </form>
+    {% endif %}
+
     <!-- Flow guide -->
     <div class="mt-6 border border-stone-600 p-4">
       <h3 class="text-xs font-bold text-stone-300 uppercase tracking-wider mb-2">Ingestion Flow</h3>
@@ -263,8 +325,9 @@
         <li>1. Discover API or create connector</li>
         <li>2. Confirm discovery → auto-proposes schemas</li>
         <li>3. Confirm schema → creates entity type</li>
-        <li>4. Propose mapping → confirm</li>
-        <li>5. Trigger sync on the connector</li>
+        <li>4. Propose relationships (if detected) → confirm</li>
+        <li>5. Propose mapping → confirm</li>
+        <li>6. Trigger sync on the connector</li>
       </ol>
     </div>
   </div>

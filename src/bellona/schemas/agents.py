@@ -30,12 +30,47 @@ class ProposedPropertyDefinition(BaseModel):
     description: str = ""
 
 
+class PotentialRelationship(BaseModel):
+    """A relationship signal emitted by the Schema Agent.
+
+    Raw hint that the source field may reference another entity type. The
+    Relationship Agent refines these into formal proposals with cardinality.
+    """
+
+    source_field: str
+    target_entity_type_name: str
+    basis: str
+
+
 class EntityTypeProposalContent(BaseModel):
     entity_type_name: str
     description: str = ""
     properties: list[ProposedPropertyDefinition]
     reasoning: str
     confidence: float = Field(ge=0.0, le=1.0)
+    potential_relationships: list[PotentialRelationship] = Field(default_factory=list)
+
+
+class ProposedRelationship(BaseModel):
+    """A formal relationship proposal produced by the Relationship Agent."""
+
+    source_entity_type: str
+    target_entity_type: str
+    source_field: str
+    relationship_name: str
+    cardinality: Literal["one-to-one", "one-to-many", "many-to-one", "many-to-many"]
+    confidence: float = Field(ge=0.0, le=1.0)
+    reasoning: str
+
+
+class RelationshipProposalContent(BaseModel):
+    relationships: list[ProposedRelationship]
+    overall_confidence: float = Field(ge=0.0, le=1.0)
+    notes: str = ""
+
+
+class RelationshipProposeRequest(BaseModel):
+    schema_proposal_id: uuid.UUID
 
 
 class QualityIssue(BaseModel):

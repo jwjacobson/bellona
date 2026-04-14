@@ -12,19 +12,22 @@ from bellona.schemas.agents import (
     DiscoveryRequest,
     MappingProposeRequest,
     QualityReport,
+    RelationshipProposeRequest,
     SchemaProposeRequest,
 )
 from bellona.schemas.connectors import ConnectorRead, FieldMappingRead
-from bellona.schemas.ontology import EntityTypeRead
+from bellona.schemas.ontology import EntityTypeRead, RelationshipTypeRead
 from bellona.services.agent_service import (
     ProposalError,
     check_quality,
     confirm_discovery_proposal,
     confirm_mapping_proposal,
+    confirm_relationship_proposal,
     confirm_schema_proposal,
     discover_api,
     list_proposals,
     propose_mapping,
+    propose_relationships,
     propose_schema,
     reject_proposal,
 )
@@ -122,6 +125,29 @@ async def confirm_discovery_endpoint(
     return [ConnectorRead.model_validate(c) for c in connectors]
 
 
+# ── Relationship Agent ────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/relationships/propose",
+    response_model=AgentProposalRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def propose_relationships_endpoint(
+    data: RelationshipProposeRequest,
+    db: AsyncSession = Depends(get_db),
+) -> AgentProposalRead:
+    try:
+        proposal = await propose_relationships(db, data.schema_proposal_id)
+    except ProposalError as exc:
+        msg = str(exc)
+        if "not found" in msg:
+            raise _not_found(msg)
+        raise _unprocessable(msg)
+    await db.commit()
+    return proposal  # type: ignore[return-value]
+
+
 # ── Generic Proposal Actions ──────────────────────────────────────────────────
 
 
@@ -147,6 +173,10 @@ async def confirm_proposal_endpoint(
             connectors = await confirm_discovery_proposal(db, proposal_id)
             await db.commit()
             return [ConnectorRead.model_validate(c) for c in connectors]
+        elif proposal.proposal_type == "relationship":
+            rel_types = await confirm_relationship_proposal(db, proposal_id)
+            await db.commit()
+            return [RelationshipTypeRead.model_validate(r) for r in rel_types]
         else:
             raise ProposalError(f"Unknown proposal type: {proposal.proposal_type}")
     except ProposalError as exc:
