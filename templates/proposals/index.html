@@ -194,22 +194,36 @@
             <!-- ── Relationship proposal ── -->
             {% elif proposal.proposal_type == 'relationship' %}
             <div class="mt-2">
-              <p class="text-xs text-stone-400 mb-1">Proposed relationships:</p>
-              <div class="space-y-1">
+              <p class="text-xs text-stone-400 mb-2">
+                {{ proposal.content.get('relationships', []) | length }} proposed relationship{{ 's' if proposal.content.get('relationships', []) | length != 1 }}:
+              </p>
+              <div class="space-y-3">
                 {% for r in proposal.content.get('relationships', []) %}
-                <div class="text-xs font-mono">
-                  <span class="text-stone-300">{{ r.source_entity_type }}</span>
-                  <span class="text-stone-500 mx-1">.{{ r.source_field }} →</span>
-                  <span class="text-fuchsia-400">{{ r.target_entity_type }}</span>
-                  <span class="text-emerald-700 ml-2">{{ r.relationship_name }}</span>
-                  <span class="text-amber-400 ml-2">{{ r.cardinality }}</span>
-                  {% if r.confidence is defined %}
-                  <span class="text-stone-500 ml-2">({{ "%.0f"|format(r.confidence * 100) }}%)</span>
-                  {% endif %}
+                <div class="border-l-2 border-fuchsia-700 pl-3 py-1">
+                  <div class="grid grid-cols-[8rem_1fr] gap-x-3 gap-y-0.5 text-xs">
+                    <span class="text-stone-500 uppercase tracking-wider">Source</span>
+                    <span class="text-stone-200 font-mono">{{ r.source_entity_type }}<span class="text-stone-500">.{{ r.source_field }}</span></span>
+
+                    <span class="text-stone-500 uppercase tracking-wider">Target</span>
+                    <span class="text-fuchsia-400 font-mono">{{ r.target_entity_type }}</span>
+
+                    <span class="text-stone-500 uppercase tracking-wider">Name</span>
+                    <span class="text-emerald-700 font-mono">{{ r.relationship_name }}</span>
+
+                    <span class="text-stone-500 uppercase tracking-wider">Cardinality</span>
+                    <span class="text-amber-400 font-mono">{{ r.cardinality }}</span>
+
+                    {% if r.confidence is defined %}
+                    <span class="text-stone-500 uppercase tracking-wider">Confidence</span>
+                    <span class="text-stone-300">{{ "%.0f"|format(r.confidence * 100) }}%</span>
+                    {% endif %}
+
+                    {% if r.reasoning %}
+                    <span class="text-stone-500 uppercase tracking-wider">Reasoning</span>
+                    <span class="text-stone-400 italic">{{ r.reasoning }}</span>
+                    {% endif %}
+                  </div>
                 </div>
-                {% if r.reasoning %}
-                <p class="text-xs text-stone-500 italic ml-4">{{ r.reasoning }}</p>
-                {% endif %}
                 {% endfor %}
               </div>
             </div>
@@ -223,10 +237,30 @@
             {% endif %}
           </div>
 
-          <!-- Confirm/Reject buttons for non-discovery proposals -->
-          {% if proposal.status == 'proposed' and proposal.proposal_type != 'discovery' %}
+          <!-- Confirm/Reject buttons for non-discovery, non-relationship proposals -->
+          {% if proposal.status == 'proposed' and proposal.proposal_type not in ('discovery', 'relationship') %}
           <div class="flex gap-2 shrink-0">
             <form method="post" action="/ui/proposals/{{ proposal.id }}/confirm">
+              <button type="submit"
+                      class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium border border-emerald-600">
+                Confirm
+              </button>
+            </form>
+            <form method="post" action="/ui/proposals/{{ proposal.id }}/reject">
+              <button type="submit"
+                      class="px-3 py-1.5 bg-stone-700 hover:bg-stone-600 text-red-400 text-xs font-medium border border-stone-500">
+                Reject
+              </button>
+            </form>
+          </div>
+          {% endif %}
+
+          <!-- Relationship proposals confirm via the v1 API endpoint -->
+          {% if proposal.status == 'proposed' and proposal.proposal_type == 'relationship' %}
+          <div class="flex gap-2 shrink-0">
+            <form hx-post="/api/v1/proposals/{{ proposal.id }}/confirm"
+                  hx-swap="none"
+                  hx-on::after-request="if(event.detail.successful) window.location.reload()">
               <button type="submit"
                       class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-medium border border-emerald-600">
                 Confirm
