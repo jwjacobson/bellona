@@ -228,6 +228,18 @@ async def connector_detail(
     )
     mapping_proposal = mapping_prop_result.scalar_one_or_none()
 
+    # Pipeline state: relationship proposal
+    rel_prop_result = await db.execute(
+        select(AgentProposal)
+        .where(
+            AgentProposal.connector_id == connector_id,
+            AgentProposal.proposal_type == "relationship",
+        )
+        .order_by(AgentProposal.created_at.desc())
+        .limit(1)
+    )
+    relationship_proposal = rel_prop_result.scalar_one_or_none()
+
     # Confirmed field mapping
     fm_result = await db.execute(
         select(FieldMapping)
@@ -266,6 +278,7 @@ async def connector_detail(
             "entity_types": entity_types,
             "schema_proposal": schema_proposal,
             "mapping_proposal": mapping_proposal,
+            "relationship_proposal": relationship_proposal,
             "field_mapping": field_mapping,
             "confirmed_entity_type": confirmed_entity_type,
             "last_completed_job": last_completed_job,

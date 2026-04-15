@@ -9,8 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bellona.models.system import AgentProposal
 from bellona.schemas.agents import (
+    EntityTypeProposalContent,
     FieldMappingProposedEntry,
     MappingProposalContent,
+    PotentialRelationship,
+    ProposedPropertyDefinition,
+    ProposedRelationship,
+    RelationshipProposalContent,
 )
 from bellona.schemas.ontology import EntityTypeCreate, PropertyDefinitionCreate
 from bellona.services.entity_type import create_entity_type
@@ -211,3 +216,185 @@ async def test_proposals_propose_mapping_shows_error_on_failure(
 
     assert response.status_code == 422
     assert "Mapper agent failed" in response.text
+
+
+# ── Relationship proposals ────────────────────────────────────────────────────
+
+
+EMPLOYEES_CSV = "id,name,manager_id\n1,Alice,\n2,Bob,1\n3,Carol,1\n4,Dan,2\n"
+
+
+async def _setup_confirmed_schema_with_signals(
+    db_session: AsyncSession, tmp_path
+):
+    csv_file = tmp_path / f"emp-ui-{uuid.uuid4().hex[:4]}.csv"
+    csv_file.write_text(EMPLOYEES_CSV)
+    connector = await create_connector(
+        db_session,
+        "csv",
+        f"ui-rel-{uuid.uuid4().hex[:4]}",
+        {"file_path": str(csv_file)},
+    )
+    et_name = f"UIEmp-{uuid.uuid4().hex[:6]}"
+    et = await create_entity_type(
+        db_session,
+        EntityTypeCreate(
+            name=et_name,
+            properties=[
+                PropertyDefinitionCreate(name="id", data_type="integer", required=True),
+                PropertyDefinitionCreate(name="name", data_type="string"),
+                PropertyDefinitionCreate(name="manager_id", data_type="integer"),
+            ],
+        ),
+    )
+    content = EntityTypeProposalContent(
+        entity_type_name=et_name,
+        properties=[
+            ProposedPropertyDefinition(name="id", data_type="integer", required=True),
+            ProposedPropertyDefinition(name="name", data_type="string"),
+            ProposedPropertyDefinition(name="manager_id", data_type="integer"),
+        ],
+        reasoning="",
+        confidence=0.9,
+        potential_relationships=[
+            PotentialRelationship(
+                source_field="manager_id",
+                target_entity_type_name=et_name,
+                basis="self-ref",
+            )
+        ],
+    )
+    schema_proposal = AgentProposal(
+        proposal_type="entity_type",
+        status="confirmed",
+        content=content.model_dump(),
+        confidence=0.9,
+        connector_id=connector.id,
+        entity_type_id=et.id,
+    )
+    db_session.add(schema_proposal)
+    await db_session.flush()
+    return connector, et, schema_proposal, et_name
+
+
+async def test_proposals_page_shows_propose_relationships_form(
+    client: AsyncClient, db_session: AsyncSession, tmp_path
+) -> None:
+    _, _, schema_proposal, et_name = await _setup_confirmed_schema_with_signals(
+        db_session, tmp_path
+    )
+
+    response = await client.get("/ui/proposals")
+    assert response.status_code == 200
+    assert "Propose Relationships" in response.text
+    assert et_name in response.text
+
+
+async def test_proposals_propose_relationships_redirects(
+    client: AsyncClient, db_session: AsyncSession, tmp_path
+) -> None:
+    _, _, schema_proposal, et_name = await _setup_confirmed_schema_with_signals(
+        db_session, tmp_path
+    )
+
+    mock_result = RelationshipProposalContent(
+        relationships=[
+            ProposedRelationship(
+                source_entity_type=et_name,
+                target_entity_type=et_name,
+                source_field="manager_id",
+                relationship_name="reports_to",
+                cardinality="many-to-one",
+                confidence=0.9,
+                reasoning="",
+            )
+        ],
+        overall_confidence=0.9,
+    )
+
+    with patch(
+        "bellona.services.agent_service.RelationshipAgent.propose",
+        new=AsyncMock(return_value=mock_result),
+    ):
+        response = await client.post(
+            "/ui/proposals/propose-relationships",
+            data={"schema_proposal_id": str(schema_proposal.id)},
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ui/proposals"
+
+
+async def test_proposals_page_renders_relationship_proposal(
+    client: AsyncClient, db_session: AsyncSession, tmp_path
+) -> None:
+    _, et, _, et_name = await _setup_confirmed_schema_with_signals(
+        db_session, tmp_path
+    )
+    rel_proposal = AgentProposal(
+        proposal_type="relationship",
+        status="proposed",
+        content=RelationshipProposalContent(
+            relationships=[
+                ProposedRelationship(
+                    source_entity_type=et_name,
+                    target_entity_type=et_name,
+                    source_field="manager_id",
+                    relationship_name="reports_to",
+                    cardinality="many-to-one",
+                    confidence=0.92,
+                    reasoning="values repeat",
+                )
+            ],
+            overall_confidence=0.92,
+        ).model_dump(),
+        confidence=0.92,
+        entity_type_id=et.id,
+    )
+    db_session.add(rel_proposal)
+    await db_session.flush()
+
+    response = await client.get("/ui/proposals")
+    assert response.status_code == 200
+    assert "reports_to" in response.text
+    assert "many-to-one" in response.text
+    assert "manager_id" in response.text
+
+
+async def test_confirm_relationship_proposal_ui_redirects(
+    client: AsyncClient, db_session: AsyncSession, tmp_path
+) -> None:
+    _, et, _, et_name = await _setup_confirmed_schema_with_signals(
+        db_session, tmp_path
+    )
+    rel_proposal = AgentProposal(
+        proposal_type="relationship",
+        status="proposed",
+        content={
+            "relationships": [
+                {
+                    "source_entity_type": et_name,
+                    "target_entity_type": et_name,
+                    "source_field": "manager_id",
+                    "relationship_name": "reports_to",
+                    "cardinality": "many-to-one",
+                    "confidence": 0.92,
+                    "reasoning": "",
+                }
+            ],
+            "overall_confidence": 0.92,
+            "notes": "",
+        },
+        confidence=0.92,
+        entity_type_id=et.id,
+    )
+    db_session.add(rel_proposal)
+    await db_session.flush()
+    rel_id = rel_proposal.id
+
+    response = await client.post(
+        f"/ui/proposals/{rel_id}/confirm",
+        follow_redirects=False,
+    )
+    assert response.status_code == 303

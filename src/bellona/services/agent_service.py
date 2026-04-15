@@ -14,19 +14,22 @@ from bellona.agents.discovery_agent import DiscoveryAgent
 from bellona.agents.mapper_agent import MapperAgent
 from bellona.agents.quality_agent import QualityAgent
 from bellona.agents.query_agent import QueryAgent
+from bellona.agents.relationship_agent import RelationshipAgent
 from bellona.agents.schema_agent import SchemaAgent
 from bellona.core.config import get_settings
 from bellona.models.entities import Entity
-from bellona.models.ontology import EntityType
+from bellona.models.ontology import EntityType, RelationshipType
 from bellona.models.system import AgentProposal, Connector, FieldMapping
 from bellona.schemas.agents import (
     DiscoveryProposalContent,
     EntityTypeProposalContent,
     MappingProposalContent,
     NaturalLanguageQueryResponse,
+    PotentialRelationship,
     ProposedPropertyDefinition,
     QualityReport,
     QueryAgentResult,
+    RelationshipProposalContent,
 )
 from bellona.schemas.query import EntityQuery, FilterCondition, FilterGroup, SortClause
 from bellona.schemas.ontology import EntityTypeCreate, PropertyDefinitionCreate
@@ -272,6 +275,164 @@ async def confirm_schema_proposal(
         entity_type_name=entity_type.name,
     )
     return entity_type
+
+
+async def _sample_source_records(
+    connector: Connector, limit: int = 50
+) -> list[dict[str, Any]]:
+    """Pull up to `limit` raw records from a connector for cardinality inference."""
+    instance = _create_connector_instance(connector)
+    records: list[dict[str, Any]] = []
+    async for record in instance.fetch_records():
+        records.append(record.data)
+        if len(records) >= limit:
+            break
+    return records
+
+
+async def propose_relationships(
+    db: AsyncSession,
+    schema_proposal_id: uuid.UUID,
+    *,
+    _mock_result: RelationshipProposalContent | None = None,
+) -> AgentProposal:
+    """Run the Relationship Agent against a confirmed schema proposal."""
+    schema_proposal = await _get_proposal_or_raise(db, schema_proposal_id)
+    if schema_proposal.proposal_type != "entity_type":
+        raise ProposalError(
+            f"Proposal {schema_proposal_id} is type "
+            f"'{schema_proposal.proposal_type}', not 'entity_type'"
+        )
+    if schema_proposal.status != "confirmed":
+        raise ProposalError(
+            f"Schema proposal {schema_proposal_id} must be confirmed before "
+            "proposing relationships"
+        )
+    if schema_proposal.connector_id is None:
+        raise ProposalError(
+            f"Schema proposal {schema_proposal_id} has no connector"
+        )
+    if schema_proposal.entity_type_id is None:
+        raise ProposalError(
+            f"Schema proposal {schema_proposal_id} has no confirmed entity type"
+        )
+
+    connector = await _get_connector_or_raise(db, schema_proposal.connector_id)
+    source_entity_type = await _get_entity_type_or_raise(
+        db, schema_proposal.entity_type_id
+    )
+
+    raw_signals = schema_proposal.content.get("potential_relationships", []) or []
+    all_signals = [PotentialRelationship.model_validate(s) for s in raw_signals]
+
+    # Filter to valid targets: either an existing entity type, or a self-reference.
+    all_et_result = await db.execute(select(EntityType))
+    existing_by_name = {et.name: et for et in all_et_result.scalars().all()}
+
+    valid_signals: list[PotentialRelationship] = []
+    for sig in all_signals:
+        if sig.target_entity_type_name == source_entity_type.name:
+            valid_signals.append(sig)
+        elif sig.target_entity_type_name in existing_by_name:
+            valid_signals.append(sig)
+        else:
+            logger.info(
+                "dropping relationship signal — target not in ontology",
+                source_field=sig.source_field,
+                target=sig.target_entity_type_name,
+            )
+
+    sample_records = await _sample_source_records(connector)
+
+    existing_et_list = [
+        {"name": et.name, "description": et.description or ""}
+        for et in existing_by_name.values()
+    ]
+
+    if not valid_signals:
+       proposal_content = RelationshipProposalContent(
+           relationships=[], overall_confidence=1.0, notes="No valid signals"
+       )
+
+    if _mock_result is not None:
+        proposal_content = _mock_result
+    else:
+        try:
+            agent = RelationshipAgent(api_key=_get_api_key(), model=_get_model())
+            proposal_content = await agent.propose(
+                source_entity_type_name=source_entity_type.name,
+                signals=valid_signals,
+                sample_records=sample_records,
+                existing_entity_types=existing_et_list,
+            )
+        except Exception as exc:
+            raise ProposalError(f"Relationship agent failed: {exc}") from exc
+
+    proposal = AgentProposal(
+        proposal_type="relationship",
+        status="proposed",
+        content=proposal_content.model_dump(),
+        confidence=proposal_content.overall_confidence,
+        connector_id=connector.id,
+        entity_type_id=source_entity_type.id,
+    )
+    db.add(proposal)
+    await db.flush()
+    logger.info(
+        "relationship proposal created",
+        proposal_id=str(proposal.id),
+        schema_proposal_id=str(schema_proposal_id),
+        proposed_count=len(proposal_content.relationships),
+    )
+    return proposal
+
+
+async def confirm_relationship_proposal(
+    db: AsyncSession, proposal_id: uuid.UUID
+) -> list[RelationshipType]:
+    """Convert a confirmed relationship proposal into RelationshipType rows."""
+    proposal = await _get_proposal_or_raise(db, proposal_id)
+    if proposal.proposal_type != "relationship":
+        raise ProposalError(
+            f"Proposal {proposal_id} is type '{proposal.proposal_type}', "
+            "not 'relationship'"
+        )
+    if proposal.status != "proposed":
+        raise ProposalError(f"Proposal {proposal_id} is already '{proposal.status}'")
+
+    content = RelationshipProposalContent.model_validate(proposal.content)
+
+    # Resolve entity-type names to ids
+    et_result = await db.execute(select(EntityType))
+    by_name = {et.name: et for et in et_result.scalars().all()}
+
+    created: list[RelationshipType] = []
+    for rel in content.relationships:
+        src = by_name.get(rel.source_entity_type)
+        tgt = by_name.get(rel.target_entity_type)
+        if src is None or tgt is None:
+            raise ProposalError(
+                f"Cannot create relationship: entity type "
+                f"'{rel.source_entity_type}' or '{rel.target_entity_type}' not found"
+            )
+        rt = RelationshipType(
+            name=rel.relationship_name,
+            source_entity_type_id=src.id,
+            target_entity_type_id=tgt.id,
+            cardinality=rel.cardinality,
+            properties={"source_field": rel.source_field},
+        )
+        db.add(rt)
+        created.append(rt)
+
+    proposal.status = "confirmed"
+    await db.flush()
+    logger.info(
+        "relationship proposal confirmed",
+        proposal_id=str(proposal_id),
+        relationship_type_count=len(created),
+    )
+    return created
 
 
 async def reject_proposal(db: AsyncSession, proposal_id: uuid.UUID) -> AgentProposal:

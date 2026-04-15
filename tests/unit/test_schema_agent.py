@@ -6,7 +6,11 @@ import pytest
 
 from bellona.agents.schema_agent import SchemaAgent
 from bellona.connectors.base import SchemaDiscovery, SchemaField
-from bellona.schemas.agents import EntityTypeProposalContent, ProposedPropertyDefinition
+from bellona.schemas.agents import (
+    EntityTypeProposalContent,
+    PotentialRelationship,
+    ProposedPropertyDefinition,
+)
 
 
 SAMPLE_SCHEMA = SchemaDiscovery(
@@ -130,6 +134,49 @@ async def test_schema_agent_no_existing_types() -> None:
         result = await agent.propose(SAMPLE_SCHEMA, [])
 
     assert result.entity_type_name == "StockPrice"
+
+
+async def test_schema_agent_returns_potential_relationships() -> None:
+    """Schema agent may emit potential relationship signals from field-name patterns."""
+    proposal_with_rels = EntityTypeProposalContent(
+        entity_type_name="Employee",
+        description="",
+        properties=[
+            ProposedPropertyDefinition(name="id", data_type="integer", required=True),
+            ProposedPropertyDefinition(
+                name="manager_id", data_type="integer", required=False
+            ),
+        ],
+        reasoning="self-reference detected",
+        confidence=0.9,
+        potential_relationships=[
+            PotentialRelationship(
+                source_field="manager_id",
+                target_entity_type_name="Employee",
+                basis="naming convention: '_id' suffix matching own entity type",
+            ),
+        ],
+    )
+    agent = SchemaAgent(api_key="test-key")
+    with pytest.MonkeyPatch().context() as mp:
+        mp.setattr(agent, "_run_agent", AsyncMock(return_value=proposal_with_rels))
+        result = await agent.propose(SAMPLE_SCHEMA, [])
+
+    assert len(result.potential_relationships) == 1
+    signal = result.potential_relationships[0]
+    assert signal.source_field == "manager_id"
+    assert signal.target_entity_type_name == "Employee"
+    assert "naming convention" in signal.basis
+
+
+async def test_entity_type_proposal_defaults_to_empty_relationships() -> None:
+    proposal = EntityTypeProposalContent(
+        entity_type_name="Foo",
+        properties=[],
+        reasoning="",
+        confidence=0.5,
+    )
+    assert proposal.potential_relationships == []
 
 
 async def test_schema_agent_confidence_in_range() -> None:

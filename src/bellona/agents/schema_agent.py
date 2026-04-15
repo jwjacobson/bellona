@@ -22,6 +22,14 @@ Rules:
 - Mark properties as required if they appear non-nullable and semantically essential.
 - Consider existing entity types and avoid duplicating them; propose something distinct.
 - Provide reasoning and a confidence score (0.0–1.0).
+- Detect POTENTIAL RELATIONSHIPS: if any source fields look like foreign-key \
+  references to another entity (e.g. `manager_id`, `department_id`, fields containing \
+  URLs that point at another resource, nested object/array fields), populate \
+  `potential_relationships` with one entry per signal. For each signal provide the \
+  `source_field`, the suspected `target_entity_type_name` (it may be the entity type \
+  you are currently proposing, for self-references), and a short `basis` explaining \
+  the inference (e.g. "naming convention: '_id' suffix"). If no references are \
+  apparent, leave `potential_relationships` empty.
 - Respond ONLY with valid JSON matching the requested schema. No prose outside the JSON.
 """
 

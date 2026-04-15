@@ -15,9 +15,11 @@ from bellona.services.agent_service import (
     ProposalError,
     confirm_discovery_proposal,
     confirm_mapping_proposal,
+    confirm_relationship_proposal,
     confirm_schema_proposal,
     list_proposals,
     propose_mapping,
+    propose_relationships,
     reject_proposal,
 )
 
@@ -37,10 +39,25 @@ async def _proposal_context(db: AsyncSession) -> dict:
     conn_result = await db.execute(select(Connector))
     connectors = {c.id: c for c in conn_result.scalars().all()}
 
+    # Confirmed schema proposals that still have unprocessed relationship signals —
+    # used to populate the "Propose Relationships" dropdown.
+    confirmed_schema_result = await db.execute(
+        select(AgentProposal)
+        .where(AgentProposal.proposal_type == "entity_type")
+        .where(AgentProposal.status == "confirmed")
+        .order_by(AgentProposal.created_at.desc())
+    )
+    schema_proposals_with_signals = [
+        p
+        for p in confirmed_schema_result.scalars().all()
+        if p.content.get("potential_relationships")
+    ]
+
     return {
         "proposals": proposals,
         "entity_types": entity_types,
         "connectors": connectors,
+        "schema_proposals_with_signals": schema_proposals_with_signals,
     }
 
 
@@ -65,6 +82,8 @@ async def confirm(
             await confirm_mapping_proposal(db, proposal_id)
         elif proposal.proposal_type == "entity_type":
             await confirm_schema_proposal(db, proposal_id)
+        elif proposal.proposal_type == "relationship":
+            await confirm_relationship_proposal(db, proposal_id)
         elif proposal.proposal_type == "discovery":
             form = await request.form()
             selected = [int(v) for v in form.getlist("resources")]
@@ -101,6 +120,32 @@ async def reject(
         await reject_proposal(db, proposal_id)
         await db.commit()
     except ProposalError as exc:
+        ctx = await _proposal_context(db)
+        ctx["error"] = str(exc)
+        return templates.TemplateResponse(
+            request,
+            "proposals/index.html",
+            ctx,
+            status_code=422,
+        )
+    return RedirectResponse(url="/ui/proposals", status_code=303)
+
+
+@router.post("/propose-relationships")
+async def propose_relationships_ui(
+    request: Request,
+    schema_proposal_id: uuid.UUID = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await propose_relationships(db, schema_proposal_id)
+        await db.commit()
+    except ProposalError as exc:
+        logger.warning(
+            "relationship proposal failed",
+            schema_proposal_id=str(schema_proposal_id),
+            error=str(exc),
+        )
         ctx = await _proposal_context(db)
         ctx["error"] = str(exc)
         return templates.TemplateResponse(

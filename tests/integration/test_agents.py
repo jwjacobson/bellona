@@ -12,9 +12,12 @@ from bellona.schemas.agents import (
     EntityTypeProposalContent,
     FieldMappingProposedEntry,
     MappingProposalContent,
+    PotentialRelationship,
     ProposedPropertyDefinition,
+    ProposedRelationship,
     QualityIssue,
     QualityReport,
+    RelationshipProposalContent,
 )
 from bellona.schemas.ontology import EntityTypeCreate, PropertyDefinitionCreate
 from bellona.services.entity_type import create_entity_type
@@ -331,6 +334,152 @@ async def test_list_proposals(client: AsyncClient, db_session: AsyncSession) -> 
     ids = [p["id"] for p in response.json()]
     assert str(proposed.id) in ids
     assert str(approved.id) not in ids
+
+
+# ── POST /api/v1/relationships/propose ────────────────────────────────────────
+
+
+EMPLOYEES_CSV = (
+    "id,name,manager_id\n1,Alice,\n2,Bob,1\n3,Carol,1\n4,Dan,2\n"
+)
+
+
+async def test_propose_relationships_endpoint(
+    client: AsyncClient, db_session: AsyncSession, tmp_path
+) -> None:
+    csv_file = tmp_path / "employees.csv"
+    csv_file.write_text(EMPLOYEES_CSV)
+    connector = await create_connector(
+        db_session,
+        "csv",
+        f"rel-api-{uuid.uuid4().hex[:4]}",
+        {"file_path": str(csv_file)},
+    )
+    et_name = f"EmpRelAPI-{uuid.uuid4().hex[:6]}"
+    et = await create_entity_type(
+        db_session,
+        EntityTypeCreate(
+            name=et_name,
+            properties=[
+                PropertyDefinitionCreate(name="id", data_type="integer", required=True),
+                PropertyDefinitionCreate(name="name", data_type="string"),
+                PropertyDefinitionCreate(name="manager_id", data_type="integer"),
+            ],
+        ),
+    )
+    schema_proposal = AgentProposal(
+        proposal_type="entity_type",
+        status="confirmed",
+        content=EntityTypeProposalContent(
+            entity_type_name=et_name,
+            properties=[
+                ProposedPropertyDefinition(name="id", data_type="integer", required=True),
+                ProposedPropertyDefinition(name="name", data_type="string"),
+                ProposedPropertyDefinition(name="manager_id", data_type="integer"),
+            ],
+            reasoning="",
+            confidence=0.9,
+            potential_relationships=[
+                PotentialRelationship(
+                    source_field="manager_id",
+                    target_entity_type_name=et_name,
+                    basis="self-ref",
+                )
+            ],
+        ).model_dump(),
+        confidence=0.9,
+        connector_id=connector.id,
+        entity_type_id=et.id,
+    )
+    db_session.add(schema_proposal)
+    await db_session.flush()
+
+    mock_result = RelationshipProposalContent(
+        relationships=[
+            ProposedRelationship(
+                source_entity_type=et_name,
+                target_entity_type=et_name,
+                source_field="manager_id",
+                relationship_name="reports_to",
+                cardinality="many-to-one",
+                confidence=0.9,
+                reasoning="repeats",
+            )
+        ],
+        overall_confidence=0.9,
+    )
+
+    with patch(
+        "bellona.services.agent_service.RelationshipAgent.propose",
+        new=AsyncMock(return_value=mock_result),
+    ):
+        response = await client.post(
+            "/api/v1/relationships/propose",
+            json={"schema_proposal_id": str(schema_proposal.id)},
+        )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["proposal_type"] == "relationship"
+    assert data["status"] == "proposed"
+    assert len(data["content"]["relationships"]) == 1
+
+
+async def test_propose_relationships_missing_schema_proposal(
+    client: AsyncClient,
+) -> None:
+    response = await client.post(
+        "/api/v1/relationships/propose",
+        json={"schema_proposal_id": str(uuid.uuid4())},
+    )
+    assert response.status_code == 404
+
+
+async def test_confirm_relationship_proposal_endpoint(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    et_name = f"EmpConfRel-{uuid.uuid4().hex[:6]}"
+    et = await create_entity_type(
+        db_session,
+        EntityTypeCreate(
+            name=et_name,
+            properties=[
+                PropertyDefinitionCreate(name="id", data_type="integer", required=True),
+            ],
+        ),
+    )
+    proposal = AgentProposal(
+        proposal_type="relationship",
+        status="proposed",
+        content={
+            "relationships": [
+                {
+                    "source_entity_type": et_name,
+                    "target_entity_type": et_name,
+                    "source_field": "manager_id",
+                    "relationship_name": "reports_to",
+                    "cardinality": "many-to-one",
+                    "confidence": 0.9,
+                    "reasoning": "",
+                }
+            ],
+            "overall_confidence": 0.9,
+            "notes": "",
+        },
+        confidence=0.9,
+        entity_type_id=et.id,
+    )
+    db_session.add(proposal)
+    await db_session.flush()
+
+    response = await client.post(f"/api/v1/proposals/{proposal.id}/confirm")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["cardinality"] == "many-to-one"
+    assert data[0]["source_entity_type_id"] == str(et.id)
 
 
 # ── POST /api/v1/quality/check/{entity_type_id} ───────────────────────────────
