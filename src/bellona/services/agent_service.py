@@ -349,6 +349,11 @@ async def propose_relationships(
         for et in existing_by_name.values()
     ]
 
+    if not valid_signals:
+       proposal_content = RelationshipProposalContent(
+           relationships=[], overall_confidence=1.0, notes="No valid signals"
+       )
+
     if _mock_result is not None:
         proposal_content = _mock_result
     else:
