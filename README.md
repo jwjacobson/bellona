@@ -68,10 +68,11 @@ Bellona can currently ingest data from CSVs and REST APIs. To create a connector
 After you upload a CSV, you will be taken to the new connector's details page.
 
 1. Click `Propose schema`; once a proposal has been made, follow the link to the Proposals page.
-2. `Confirm` the schema proposal; you will be taken back to the connector details page.
-3. Select the appropriate schema and click `Propose mapping`; once a proposal has been made, follow the link to the Proposals page.
-4. `Confirm` the mapping proposal; you will be taken back to the connector details page.
-5. Click `Trigger sync` to ingest the data from the file. You can now explore your data in the Explorer.
+2. Confirm the schema proposal; you will be taken back to the connector details page.
+3. If the schema detected potential relationships (e.g., foreign keys to other entity types), a Relationships row will appear in the Pipeline Status. Click `Propose relationships`; once a proposal has been made, follow the link to the Proposals page and confirm the relationship proposal. If no relationships were detected, skip this step.
+4. Select the appropriate schema and click `Propose mapping`; once a proposal has been made, follow the link to the Proposals page.
+5. Confirm the mapping proposal; you will be taken back to the connector details page.
+6. Click `Trigger sync` to ingest the data from the file. You can now view your data in the Explorer.
 
 ##### REST API connector
 1. Enter the API's base url in the `API BASE URL` field, press `Discover API`, and wait for the Discovery agent to do its work.
@@ -79,7 +80,7 @@ After you upload a CSV, you will be taken to the new connector's details page.
 > [!NOTE]
 > The Discovery agent takes a long time (~2 minutes on the Star Wars API); if you know the configuration details of your desired API, you may wish to configure the connector manually in the dropdown below the Discover API button. Manual configuration skips the Discovery agent step.
 
-2. Follow the link to the Proposals page and confirm the Discovery proposal; you will be redirected to the **Connectors** page.
+2. Follow the link to the Proposals page and confirm the Discovery proposal; you will be redirected to the Connectors page.
 3. Follow the `details` link for the connector of your choice. From here, the procedure continues from step 1 in the CSV connector instructions above.
 
 ### Manually calling the endpoints
