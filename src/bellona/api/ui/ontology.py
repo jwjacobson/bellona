@@ -51,36 +51,6 @@ async def entity_type_detail(
     )
 
 
-@router.post("/entity-types/{entity_type_id}/properties")
-async def add_property(
-    request: Request,
-    entity_type_id: uuid.UUID,
-    name: str = Form(...),
-    data_type: str = Form(...),
-    required: str = Form("false"),
-    description: str = Form(""),
-    db: AsyncSession = Depends(get_db),
-):
-    entity_type = await get_entity_type(db, entity_type_id)
-    if entity_type is None:
-        return templates.TemplateResponse(request, "404.html", {}, status_code=404)
-    patch = EntityTypePatch(
-        add_properties=[
-            PropertyDefinitionCreate(
-                name=name,
-                data_type=data_type,  # type: ignore[arg-type]
-                required=required.lower() == "true",
-                description=description or None,
-            )
-        ]
-    )
-    await patch_entity_type(db, entity_type, patch)
-    await db.commit()
-    return RedirectResponse(
-        url=f"/ui/ontology/entity-types/{entity_type_id}", status_code=303
-    )
-
-
 @router.get("/relationships")
 async def relationships_index(request: Request, db: AsyncSession = Depends(get_db)):
     rel_types = await list_relationship_types(db)

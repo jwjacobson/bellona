@@ -105,46 +105,6 @@
     {% endif %}
   </div>
 
-  <!-- Add property form -->
-  <div class="w-80 shrink-0">
-    <h2 class="text-base font-bold tracking-wide text-stone-100 mb-3">Add Property</h2>
-    <form method="post" action="/ui/ontology/entity-types/{{ entity_type.id }}/properties" class="space-y-3">
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Name *</label>
-        <input type="text" name="name" required
-               class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-      </div>
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Data Type *</label>
-        <select name="data_type"
-                class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-          <option value="string">string</option>
-          <option value="integer">integer</option>
-          <option value="float">float</option>
-          <option value="boolean">boolean</option>
-          <option value="date">date</option>
-          <option value="datetime">datetime</option>
-          <option value="enum">enum</option>
-          <option value="json">json</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Description</label>
-        <input type="text" name="description"
-               class="w-full bg-stone-800 border border-stone-600 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-      </div>
-      <div class="flex items-center gap-2">
-        <input type="checkbox" name="required" value="true" id="required_checkbox"
-               class="bg-stone-800 border border-stone-600">
-        <label for="required_checkbox" class="text-sm text-stone-300">Required</label>
-      </div>
-      <button type="submit"
-              class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-4 border border-emerald-600">
-        Add Property
-      </button>
-    </form>
-  </div>
-
 </div>
 
 <script>

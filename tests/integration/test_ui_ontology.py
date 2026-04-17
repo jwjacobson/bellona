@@ -29,27 +29,6 @@ async def test_entity_type_detail(client: AsyncClient) -> None:
     assert "ticker" in response.text
 
 
-async def test_add_property_redirects(client: AsyncClient) -> None:
-    create = await client.post(
-        "/api/v1/entity-types",
-        json={"name": "UIAddPropType"},
-    )
-    entity_type_id = create.json()["id"]
-
-    response = await client.post(
-        f"/ui/ontology/entity-types/{entity_type_id}/properties",
-        data={
-            "name": "revenue",
-            "data_type": "float",
-            "required": "false",
-            "description": "",
-        },
-        follow_redirects=False,
-    )
-    assert response.status_code == 303
-    assert f"/ui/ontology/entity-types/{entity_type_id}" in response.headers["location"]
-
-
 async def test_relationships_index(client: AsyncClient) -> None:
     response = await client.get("/ui/ontology/relationships")
     assert response.status_code == 200
