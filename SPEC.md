@@ -955,3 +955,49 @@ Bellona v1 is complete when a user can:
 6. See the relationships between entities visualized as a graph.
 
 The demo path for showing this to a prospective employer should take under five minutes and demonstrate the full pipeline from data source to queryable knowledge graph.
+
+## Appendices
+From now on revisions to the spec will go here.
+
+### Relationship Detection & Proposal — Spec (added April 2026)
+
+#### Overview
+Extend the ingestion pipeline to detect, propose, and confirm entity relationships before mapping occurs. This adds a new optional step between schema confirmation and mapping proposal.
+
+#### Pipeline change
+
+**Current:** Schema proposal → confirm → Mapping proposal → confirm → Sync
+
+**New:** Schema proposal → confirm → **[if relationships detected] Relationship proposal → confirm →** Mapping proposal → confirm → Sync
+
+#### Schema Agent changes
+The Schema Agent's output should be extended to include a `potential_relationships` field — a list of detected relationship signals. Each signal contains:
+- The field name carrying the reference (e.g. `manager_id`)
+- The suspected target entity type (e.g. `Employee`)
+- The basis for the inference (naming convention, value pattern, URL pattern for REST)
+
+If `potential_relationships` is empty, the confirmation step proceeds directly to mapping as today. If non-empty, the Relationship Agent is invoked.
+
+#### Relationship Agent
+A new agent responsible for taking relationship signals from the Schema Agent and producing a formal relationship proposal. Each proposed relationship includes:
+
+- `source_entity_type` — the entity type containing the reference field
+- `target_entity_type` — the entity type being referenced
+- `source_field` — the field carrying the reference
+- `relationship_name` — a human-readable name, e.g. `reports_to`, `belongs_to`
+- `cardinality` — one of `one-to-one`, `one-to-many`, `many-to-many`
+- `confidence` score
+- `reasoning`
+
+Cardinality should be inferred from the data where possible — e.g. if `manager_id` appears multiple times with the same value, that signals `many-to-one` (equivalently, the inverse is `one-to-many`). Many-to-many in CSV context is unlikely; for REST APIs it should be inferred from nested array structures.
+
+#### Proposal type
+Relationship proposals are a new proposal type alongside the existing Discovery, Schema, and Mapping proposals. They appear on the Proposals page and require explicit user confirmation before mapping proceeds.
+
+#### Persistence
+Confirmed relationships are stored and surfaced in the Ontology page and eventually visualized in the Graph.
+
+#### Out of scope for MVP
+- Multi-hop relationship detection
+- User-defined relationships (manual creation)
+- Relationship editing post-confirmation
