@@ -21,20 +21,19 @@
           <th class="px-4 py-2 text-left font-medium">Source</th>
           <th class="px-4 py-2 text-left font-medium">Target</th>
           <th class="px-4 py-2 text-left font-medium">Cardinality</th>
-          <th class="px-4 py-2 text-left font-medium"></th>
+          <th class="px-4 py-2 text-right font-medium min-w-[180px]"></th>
         </tr>
       </thead>
       <tbody>
         {% for rt in rel_types %}
         <tr id="rt-row-{{ rt.id }}"
-            x-data="relTypeRow('{{ rt.id }}')"
             class="border-t border-stone-600 hover:bg-stone-600">
           <td class="px-4 py-2 font-medium text-stone-100">{{ rt.name }}</td>
           <td class="px-4 py-2 text-stone-300">{{ et_names.get(rt.source_entity_type_id | string, rt.source_entity_type_id) }}</td>
           <td class="px-4 py-2 text-stone-300">{{ et_names.get(rt.target_entity_type_id | string, rt.target_entity_type_id) }}</td>
           <td class="px-4 py-2 text-emerald-600">{{ rt.cardinality }}</td>
-          <td class="px-4 py-2">
-            <div class="flex items-center gap-2 flex-wrap">
+          <td class="px-4 py-2 text-center">
+            <div x-data="relTypeRow('{{ rt.id }}')" class="inline-flex items-center">
               <!-- Delete button -->
               <button x-show="!showConfirm && !blocked"
                       @click="showConfirm = true"
@@ -50,8 +49,8 @@
               </span>
 
               <!-- 409: relationships still exist -->
-              <span x-show="blocked" style="display:none" class="flex items-center gap-1 text-xs flex-wrap">
-                <span class="text-red-300">Relationships still exist —</span>
+              <span x-show="blocked" style="display:none" class="flex items-center gap-1 text-xs">
+                <span class="text-red-300">Has dependents</span>
                 <button @click="blocked = false; showConfirm = false" class="text-stone-400 border border-stone-600 px-2 py-0.5 hover:bg-stone-600">dismiss</button>
               </span>
             </div>
