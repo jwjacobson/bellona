@@ -30,9 +30,9 @@
             x-data="relTypeRow('{{ rt.id }}')"
             class="border-t border-stone-600 hover:bg-stone-600">
           <td class="px-4 py-2 font-medium text-stone-100">{{ rt.name }}</td>
-          <td class="px-4 py-2 text-stone-300">{{ rt.source_entity_type_id }}</td>
-          <td class="px-4 py-2 text-stone-300">{{ rt.target_entity_type_id }}</td>
-          <td class="px-4 py-2 text-emerald-700">{{ rt.cardinality }}</td>
+          <td class="px-4 py-2 text-stone-300">{{ et_names.get(rt.source_entity_type_id | string, rt.source_entity_type_id) }}</td>
+          <td class="px-4 py-2 text-stone-300">{{ et_names.get(rt.target_entity_type_id | string, rt.target_entity_type_id) }}</td>
+          <td class="px-4 py-2 text-emerald-600">{{ rt.cardinality }}</td>
           <td class="px-4 py-2">
             <div class="flex items-center gap-2 flex-wrap">
               <!-- Delete button -->
