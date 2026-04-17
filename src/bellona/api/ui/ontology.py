@@ -55,10 +55,11 @@ async def entity_type_detail(
 async def relationships_index(request: Request, db: AsyncSession = Depends(get_db)):
     rel_types = await list_relationship_types(db)
     entity_types = await list_entity_types(db)
+    et_names = {str(et.id): et.name for et in entity_types}
     return templates.TemplateResponse(
         request,
         "ontology/relationships.html",
-        {"rel_types": rel_types, "entity_types": entity_types},
+        {"rel_types": rel_types, "entity_types": entity_types, "et_names": et_names},
     )
 
 
