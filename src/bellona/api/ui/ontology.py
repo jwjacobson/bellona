@@ -37,29 +37,6 @@ async def ontology_index(request: Request, db: AsyncSession = Depends(get_db)):
     )
 
 
-@router.post("/entity-types")
-async def create_entity_type_ui(
-    request: Request,
-    name: str = Form(...),
-    description: str = Form(""),
-    db: AsyncSession = Depends(get_db),
-):
-    try:
-        data = EntityTypeCreate(name=name, description=description or None)
-        await create_entity_type(db, data)
-        await db.commit()
-    except (IntegrityError, ValueError) as exc:
-        await db.rollback()
-        entity_types = await list_entity_types(db)
-        return templates.TemplateResponse(
-            request,
-            "ontology/index.html",
-            {"entity_types": entity_types, "error": str(exc)},
-            status_code=422,
-        )
-    return RedirectResponse(url="/ui/ontology", status_code=303)
-
-
 @router.get("/entity-types/{entity_type_id}")
 async def entity_type_detail(
     request: Request,
