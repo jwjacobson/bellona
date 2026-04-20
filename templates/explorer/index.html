@@ -32,9 +32,29 @@
       </div>
       <a href="/ui/ontology/entity-types/{{ selected.id }}"
          class="px-3 py-2 bg-olive-900 text-stone-100 text-sm border border-olive-900 hover:bg-stone-700">
-        Edit Schema →
+        View Schema →
       </a>
     </div>
+
+    {% if entities %}
+    <div class="mb-3 relative" @click.outside="columnsOpen = false">
+      <button @click="columnsOpen = !columnsOpen"
+              class="px-3 py-2 bg-stone-700 text-stone-300 text-sm border border-olive-900 hover:bg-stone-600">
+        Columns
+      </button>
+      <div x-show="columnsOpen" style="display:none"
+           class="absolute left-0 mt-1 w-56 bg-stone-800 border border-olive-900 z-10 max-h-72 overflow-y-auto">
+        <template x-for="col in cols" :key="col">
+          <label class="flex items-center gap-2 px-3 py-1.5 text-sm text-stone-300 hover:bg-stone-700 cursor-pointer">
+            <input type="checkbox" :checked="visibleCols[col]"
+                   @change="visibleCols[col] = $event.target.checked"
+                   class="bg-stone-700 border border-stone-500 cursor-pointer">
+            <span x-text="col"></span>
+          </label>
+        </template>
+      </div>
+    </div>
+    {% endif %}
 
     <!-- Bulk-delete bar -->
     <div x-show="selected.length > 0" style="display:none"
@@ -62,7 +82,7 @@
                    class="bg-stone-700 border border-stone-500 cursor-pointer">
           </th>
           {% for col in cols %}
-          <th class="px-4 py-2 text-left font-medium">{{ col }}</th>
+          <th class="px-4 py-2 text-left font-medium" x-show="visibleCols['{{ col }}']">{{ col }}</th>
           {% endfor %}
           <th class="px-4 py-2 text-left font-medium">ID</th>
           <th class="px-3 py-2 w-8"></th>
@@ -70,21 +90,26 @@
       </thead>
       <tbody>
         {% for entity in entities %}
-        <tr id="row-{{ entity.id }}" class="border-t border-olive-900 hover:bg-stone-600">
+        <tr id="row-{{ entity.id }}" x-data="{ confirmDelete: false }" class="border-t border-olive-900 hover:bg-stone-600">
           <td class="px-3 py-2">
             <input type="checkbox" value="{{ entity.id }}" x-model="selected"
                    class="bg-stone-700 border border-stone-500 cursor-pointer">
           </td>
           {% for col in cols %}
-          <td class="px-4 py-2 text-stone-100 max-w-xs truncate">{{ entity.properties.get(col, "—") }}</td>
+          <td class="px-4 py-2 text-stone-100 max-w-xs truncate" x-show="visibleCols['{{ col }}']">{{ entity.properties.get(col, "—") }}</td>
           {% endfor %}
           <td class="px-4 py-2 text-stone-500 text-xs font-mono">{{ entity.id }}</td>
           <td class="px-3 py-2">
-            <button @click="deleteOne('{{ entity.id }}')"
-                    title="Delete entity"
-                    class="text-stone-600 hover:text-red-400 text-base leading-none transition-colors">
-              ✕
+            <button x-show="!confirmDelete"
+                    @click="confirmDelete = true"
+                    class="text-red-400 hover:text-red-300 text-xs border border-red-900 px-2 py-0.5 hover:bg-red-950">
+              delete
             </button>
+            <span x-show="confirmDelete" style="display:none" class="flex items-center gap-1 text-xs">
+              <span class="text-stone-300">Sure?</span>
+              <button @click="deleteOne('{{ entity.id }}')" class="text-red-400 border border-red-800 px-2 py-0.5 hover:bg-red-950">yes</button>
+              <button @click="confirmDelete = false" class="text-stone-400 border border-stone-600 px-2 py-0.5 hover:bg-stone-600">no</button>
+            </span>
           </td>
         </tr>
         {% endfor %}
@@ -120,10 +145,14 @@
 
 <script>
 function explorerPanel() {
+  const _cols = [{% if entities %}{% for col in entities[0].properties.keys() %}"{{ col }}"{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}];
   return {
     selected: [],
     deleteError: null,
     entityCount: {{ total | default(0) }},
+    cols: _cols,
+    columnsOpen: false,
+    visibleCols: Object.fromEntries(_cols.map(c => [c, true])),
 
     toggleAll(checked) {
       if (checked) {
