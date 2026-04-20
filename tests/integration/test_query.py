@@ -15,6 +15,13 @@ from bellona.services.entity_type import create_entity_type
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 
+def _patch_synth(return_value: str = "synthesized answer"):
+    return patch(
+        "bellona.services.agent_service._synthesize_answer",
+        new=AsyncMock(return_value=return_value),
+    )
+
+
 async def _make_company_type(db: AsyncSession, suffix: str):
     return await create_entity_type(
         db,
@@ -65,7 +72,7 @@ async def test_nl_query_returns_results(
     with patch(
         "bellona.services.agent_service.QueryAgent.translate",
         new=AsyncMock(return_value=mock_result),
-    ):
+    ), _patch_synth("Acme was founded in 2021."):
         response = await client.post(
             "/api/v1/query/natural",
             json={"question": "Find companies founded after 2020"},
@@ -75,6 +82,7 @@ async def test_nl_query_returns_results(
     data = response.json()
     assert data["question"] == "Find companies founded after 2020"
     assert data["explanation"] == "Find companies founded after 2020."
+    assert data["answer"] == "Acme was founded in 2021."
     assert data["total_results"] == 1
     assert data["results"][0]["properties"]["name"] == "Acme"
     assert data["query_used"] is not None
@@ -103,7 +111,7 @@ async def test_nl_query_no_filter(
     with patch(
         "bellona.services.agent_service.QueryAgent.translate",
         new=AsyncMock(return_value=mock_result),
-    ):
+    ), _patch_synth():
         response = await client.post(
             "/api/v1/query/natural",
             json={"question": "List all companies"},
@@ -112,6 +120,7 @@ async def test_nl_query_no_filter(
     assert response.status_code == 200
     data = response.json()
     assert data["total_results"] == 2
+    assert data["answer"] == "synthesized answer"
 
 
 async def test_nl_query_with_group_filter(
@@ -155,7 +164,7 @@ async def test_nl_query_with_group_filter(
     with patch(
         "bellona.services.agent_service.QueryAgent.translate",
         new=AsyncMock(return_value=mock_result),
-    ):
+    ), _patch_synth():
         response = await client.post(
             "/api/v1/query/natural",
             json={"question": "Active companies founded after 2020"},
@@ -182,7 +191,7 @@ async def test_nl_query_unresolvable_entity_type(
     with patch(
         "bellona.services.agent_service.QueryAgent.translate",
         new=AsyncMock(return_value=mock_result),
-    ):
+    ), _patch_synth():
         response = await client.post(
             "/api/v1/query/natural",
             json={"question": "Something obscure"},
@@ -212,7 +221,7 @@ async def test_nl_query_with_entity_type_hint(
     with patch(
         "bellona.services.agent_service.QueryAgent.translate",
         new=AsyncMock(return_value=mock_result),
-    ):
+    ), _patch_synth():
         response = await client.post(
             "/api/v1/query/natural",
             json={"question": "List all", "entity_type_id": str(et.id)},
@@ -221,6 +230,62 @@ async def test_nl_query_with_entity_type_hint(
     assert response.status_code == 200
     data = response.json()
     assert data["total_results"] == 1
+
+
+async def test_nl_query_synthesis_receives_capped_properties_only(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    """Synthesis prompt summary must be capped at 20 entities and contain only the
+    `properties` dict from each entity (no id / entity_type_id / etc.)."""
+    et = await _make_company_type(db_session, "synth")
+    for i in range(25):
+        db_session.add(
+            Entity(
+                entity_type_id=et.id,
+                properties={"name": f"Co-{i}", "founded_year": 2020 + (i % 5)},
+                schema_version=1,
+            )
+        )
+    await db_session.flush()
+
+    mock_result = QueryAgentResult(
+        entity_type_name=et.name,
+        filters=None,
+        sort=[],
+        explanation="All companies.",
+        confidence=0.9,
+    )
+
+    captured: dict = {}
+
+    async def fake_synth(question, explanation, total, summary):
+        captured["question"] = question
+        captured["explanation"] = explanation
+        captured["total"] = total
+        captured["summary"] = summary
+        return "ok"
+
+    with patch(
+        "bellona.services.agent_service.QueryAgent.translate",
+        new=AsyncMock(return_value=mock_result),
+    ), patch(
+        "bellona.services.agent_service._synthesize_answer",
+        new=fake_synth,
+    ):
+        response = await client.post(
+            "/api/v1/query/natural",
+            json={"question": "Show companies"},
+        )
+
+    assert response.status_code == 200
+    assert captured["question"] == "Show companies"
+    assert captured["explanation"] == "All companies."
+    assert captured["total"] == 25
+    assert len(captured["summary"]) == 20
+    for props in captured["summary"]:
+        assert set(props.keys()) <= {"name", "founded_year"}
+        assert "id" not in props
+        assert "entity_type_id" not in props
 
 
 async def test_nl_query_entity_type_not_found(client: AsyncClient) -> None:

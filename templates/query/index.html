@@ -18,6 +18,14 @@
 
   {% if result %}
   <div class="space-y-4">
+    <!-- Answer -->
+    {% if result.answer %}
+    <div class="bg-stone-800 border border-emerald-600 p-4">
+      <p class="text-xs text-emerald-500 uppercase tracking-wider mb-1">Answer</p>
+      <p class="text-stone-100 text-base whitespace-pre-wrap">{{ result.answer }}</p>
+    </div>
+    {% endif %}
+
     <!-- Explanation -->
     <div class="bg-stone-800 border border-olive-900 p-4">
       <p class="text-xs text-stone-400 uppercase tracking-wider mb-1">Explanation</p>

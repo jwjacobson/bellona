@@ -1,9 +1,11 @@
 """Agent service layer: orchestrates agent calls and persists proposals."""
 
+import json
 import uuid
 from typing import Any
 from urllib.parse import urlparse
 
+import anthropic
 import structlog
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -536,6 +538,50 @@ def _normalize_filters(raw: dict[str, Any]) -> dict[str, Any]:
     return raw
 
 
+_SYNTHESIS_MAX_RESULTS = 20
+
+
+async def _synthesize_answer(
+    question: str,
+    explanation: str,
+    total: int,
+    properties_summary: list[dict[str, Any]],
+) -> str:
+    """Make a plain LLM call that turns structured query results into a
+    natural-language answer to the user's original question."""
+    if total == 0:
+        results_block = "No matching records were found."
+    else:
+        shown = len(properties_summary)
+        header = (
+            f"Total matching records: {total}. "
+            f"Showing properties of the first {shown}."
+        )
+        results_block = header + "\n\n" + json.dumps(properties_summary, default=str)
+
+    prompt = (
+        "You answer a user's question using the results of a structured database "
+        "query that has already been executed for them.\n\n"
+        f"Original question:\n{question}\n\n"
+        f"How the question was interpreted:\n{explanation}\n\n"
+        f"Query results:\n{results_block}\n\n"
+        "Write a direct, concise answer to the original question in plain "
+        "English. Reference specific data points where useful. If the result "
+        "set is large, summarize rather than enumerate every row. If there "
+        "were no results, say so clearly. Reply with the answer only — no "
+        "preamble, no markdown headings."
+    )
+
+    client = anthropic.AsyncAnthropic(api_key=_get_api_key())
+    message = await client.messages.create(
+        model=_get_model(),
+        max_tokens=1024,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    parts = [block.text for block in message.content if getattr(block, "text", None)]
+    return "".join(parts).strip()
+
+
 async def run_nl_query(
     db: AsyncSession,
     question: str,
@@ -616,6 +662,19 @@ async def run_nl_query(
     except ValueError as exc:
         raise ProposalError(f"Query execution failed: {exc}") from exc
 
+    properties_summary = [
+        item.properties for item in page.items[:_SYNTHESIS_MAX_RESULTS]
+    ]
+    try:
+        answer = await _synthesize_answer(
+            question,
+            agent_result.explanation,
+            page.total,
+            properties_summary,
+        )
+    except Exception as exc:
+        raise ProposalError(f"Answer synthesis failed: {exc}") from exc
+
     logger.info(
         "nl query executed",
         question=question,
@@ -625,6 +684,7 @@ async def run_nl_query(
     )
     return NaturalLanguageQueryResponse(
         question=question,
+        answer=answer,
         explanation=agent_result.explanation,
         query_used=entity_query.model_dump(mode="json"),
         results=[item.model_dump(mode="json") for item in page.items],
