@@ -2,10 +2,10 @@
 
 import io
 import uuid
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
-from unittest.mock import AsyncMock, patch
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 
@@ -191,6 +191,71 @@ async def test_ui_propose_schema_not_found(client: AsyncClient) -> None:
         follow_redirects=False,
     )
     assert response.status_code == 404
+
+
+async def test_ui_propose_schema_renders_connectivity_error(client: AsyncClient) -> None:
+    """A connectivity failure should render the detail page with a user-facing error."""
+    import httpx
+
+    create_resp = await client.post(
+        "/api/v1/connectors",
+        json={
+            "type": "rest_api",
+            "name": "ProposeSchemaConnErr",
+            "config": {
+                "base_url": "https://swapi.dev/api",
+                "endpoint": "/people",
+                "records_jsonpath": "$.results",
+                "pagination": {"strategy": "none"},
+            },
+        },
+    )
+    conn = create_resp.json()
+
+    async def fake_discover(self):
+        raise httpx.ConnectError("[SSL] certificate has expired")
+
+    with patch(
+        "bellona.connectors.rest_connector.RESTConnector.discover_schema",
+        new=fake_discover,
+    ):
+        response = await client.post(
+            f"/ui/connectors/{conn['id']}/propose-schema",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 422
+    assert "SSL certificate error" in response.text
+    assert "swapi.dev" in response.text
+
+
+async def test_ui_propose_schema_renders_generic_agent_error(
+    client: AsyncClient,
+) -> None:
+    """An agent/LLM failure should render a generic error, not leak raw exception."""
+    import io
+
+    csv_resp = await client.post(
+        "/ui/connectors/csv",
+        data={"name": "AgentErrCSV"},
+        files={"file": ("e.csv", io.BytesIO(b"a,b\n1,2\n"), "text/csv")},
+        follow_redirects=False,
+    )
+    conn_url = csv_resp.headers["location"]
+    conn_id = conn_url.rsplit("/", 1)[-1]
+
+    with patch(
+        "bellona.agents.schema_agent.SchemaAgent.propose",
+        new=AsyncMock(side_effect=RuntimeError("anthropic internal blowup")),
+    ):
+        response = await client.post(
+            f"/ui/connectors/{conn_id}/propose-schema",
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 422
+    assert "schema agent encountered an error" in response.text.lower()
+    assert "anthropic internal blowup" not in response.text
 
 
 # ── POST /ui/connectors/{id}/propose-mapping ─────────────────────────────────

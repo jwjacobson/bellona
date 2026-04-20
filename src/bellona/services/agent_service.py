@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 import anthropic
+import httpx
 import structlog
 from pydantic import ValidationError
 from sqlalchemy import select
@@ -43,6 +44,42 @@ logger = structlog.get_logger()
 
 class ProposalError(Exception):
     """Raised when a proposal operation cannot be completed."""
+
+
+def _host_from_config(config: dict[str, Any] | None) -> str | None:
+    """Extract a displayable host/ref from a connector config."""
+    if not config:
+        return None
+    base_url = config.get("base_url")
+    if base_url:
+        parsed = urlparse(base_url)
+        return parsed.netloc or base_url
+    file_path = config.get("file_path")
+    if file_path:
+        return str(file_path)
+    return None
+
+
+def _translate_connectivity_error(exc: Exception, ref: str | None) -> str:
+    """Convert a connector/httpx exception into a user-facing message."""
+    target = ref or "the data source"
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"Received HTTP {exc.response.status_code} from {target}"
+    if isinstance(exc, (httpx.ConnectTimeout, httpx.ReadTimeout, httpx.TimeoutException)):
+        return f"Connection to {target} timed out"
+    if isinstance(exc, httpx.ConnectError):
+        message = str(exc).lower()
+        if "ssl" in message or "certificate" in message:
+            return f"SSL certificate error for {target}: {exc}"
+        return f"Could not connect to {target}: {exc}"
+    if isinstance(exc, httpx.RequestError):
+        return f"Could not connect to {target}: {exc}"
+    if isinstance(exc, OSError):
+        return f"Could not read from {target}: {exc}"
+    return f"Data source error for {target}: {exc}"
+
+
+_CONNECTIVITY_EXCEPTIONS = (httpx.HTTPError, OSError)
 
 
 def _get_api_key() -> str:
@@ -111,7 +148,18 @@ async def propose_mapping(
     entity_type = await _get_entity_type_or_raise(db, entity_type_id)
 
     connector_instance = _create_connector_instance(connector)
-    schema = await connector_instance.discover_schema()
+    try:
+        schema = await connector_instance.discover_schema()
+    except _CONNECTIVITY_EXCEPTIONS as exc:
+        logger.warning(
+            "schema discovery failed",
+            connector_id=str(connector_id),
+            error=str(exc),
+            exc_info=True,
+        )
+        raise ProposalError(
+            _translate_connectivity_error(exc, _host_from_config(connector.config))
+        ) from exc
 
     et_context = _entity_types_to_context([entity_type])
 
@@ -122,7 +170,16 @@ async def propose_mapping(
             agent = MapperAgent(api_key=_get_api_key(), model=_get_model())
             proposal_content = await agent.propose(schema, et_context)
         except Exception as exc:
-            raise ProposalError(f"Mapper agent failed: {exc}") from exc
+            logger.warning(
+                "mapper agent failed",
+                connector_id=str(connector_id),
+                entity_type_id=str(entity_type_id),
+                error=str(exc),
+                exc_info=True,
+            )
+            raise ProposalError(
+                "The mapping agent encountered an error. Please try again."
+            ) from exc
 
     proposal = AgentProposal(
         proposal_type="mapping",
@@ -154,7 +211,18 @@ async def propose_schema(
     connector = await _get_connector_or_raise(db, connector_id)
 
     connector_instance = _create_connector_instance(connector)
-    schema = await connector_instance.discover_schema()
+    try:
+        schema = await connector_instance.discover_schema()
+    except _CONNECTIVITY_EXCEPTIONS as exc:
+        logger.warning(
+            "schema discovery failed",
+            connector_id=str(connector_id),
+            error=str(exc),
+            exc_info=True,
+        )
+        raise ProposalError(
+            _translate_connectivity_error(exc, _host_from_config(connector.config))
+        ) from exc
 
     # Provide all existing entity types as context so the agent avoids duplicates.
     all_et_result = await db.execute(
@@ -170,7 +238,15 @@ async def propose_schema(
             agent = SchemaAgent(api_key=_get_api_key(), model=_get_model())
             proposal_content = await agent.propose(schema, et_context)
         except Exception as exc:
-            raise ProposalError(f"Schema agent failed: {exc}") from exc
+            logger.warning(
+                "schema agent failed",
+                connector_id=str(connector_id),
+                error=str(exc),
+                exc_info=True,
+            )
+            raise ProposalError(
+                "The schema agent encountered an error. Please try again."
+            ) from exc
 
     proposal = AgentProposal(
         proposal_type="entity_type",
@@ -344,7 +420,18 @@ async def propose_relationships(
                 target=sig.target_entity_type_name,
             )
 
-    sample_records = await _sample_source_records(connector)
+    try:
+        sample_records = await _sample_source_records(connector)
+    except _CONNECTIVITY_EXCEPTIONS as exc:
+        logger.warning(
+            "sampling source records failed",
+            connector_id=str(connector.id),
+            error=str(exc),
+            exc_info=True,
+        )
+        raise ProposalError(
+            _translate_connectivity_error(exc, _host_from_config(connector.config))
+        ) from exc
 
     existing_et_list = [
         {"name": et.name, "description": et.description or ""}
@@ -368,7 +455,15 @@ async def propose_relationships(
                 existing_entity_types=existing_et_list,
             )
         except Exception as exc:
-            raise ProposalError(f"Relationship agent failed: {exc}") from exc
+            logger.warning(
+                "relationship agent failed",
+                schema_proposal_id=str(schema_proposal_id),
+                error=str(exc),
+                exc_info=True,
+            )
+            raise ProposalError(
+                "The relationship agent encountered an error. Please try again."
+            ) from exc
 
     proposal = AgentProposal(
         proposal_type="relationship",
@@ -492,7 +587,15 @@ async def check_quality(
         agent = QualityAgent(api_key=_get_api_key(), model=_get_model())
         return await agent.check(entity_type_context, entities_context)
     except Exception as exc:
-        raise ProposalError(f"Quality agent failed: {exc}") from exc
+        logger.warning(
+            "quality agent failed",
+            entity_type_id=str(entity_type_id),
+            error=str(exc),
+            exc_info=True,
+        )
+        raise ProposalError(
+            "The quality agent encountered an error. Please try again."
+        ) from exc
 
 
 def _normalize_filters(raw: dict[str, Any]) -> dict[str, Any]:
@@ -614,7 +717,15 @@ async def run_nl_query(
             agent = QueryAgent(api_key=_get_api_key(), model=_get_model())
             agent_result = await agent.translate(question, et_context)
         except Exception as exc:
-            raise ProposalError(f"Query agent failed: {exc}") from exc
+            logger.warning(
+                "query agent failed",
+                question=question,
+                error=str(exc),
+                exc_info=True,
+            )
+            raise ProposalError(
+                "The query agent encountered an error. Please try again."
+            ) from exc
 
     # Resolve entity_type_name → entity_type_id
     resolved_et_id: uuid.UUID | None = entity_type_id
@@ -679,7 +790,15 @@ async def run_nl_query(
                 properties_summary,
             )
         except Exception as exc:
-            raise ProposalError(f"Answer synthesis failed: {exc}") from exc
+            logger.warning(
+                "answer synthesis failed",
+                question=question,
+                error=str(exc),
+                exc_info=True,
+            )
+            raise ProposalError(
+                "The query agent encountered an error. Please try again."
+            ) from exc
 
     logger.info(
         "nl query executed",
@@ -712,8 +831,27 @@ async def discover_api(
         try:
             agent = DiscoveryAgent(api_key=_get_api_key(), model=_get_model())
             content = await agent.discover(base_url, auth_config)
+        except _CONNECTIVITY_EXCEPTIONS as exc:
+            logger.warning(
+                "discovery connectivity failed",
+                base_url=base_url,
+                error=str(exc),
+                exc_info=True,
+            )
+            host = urlparse(base_url).netloc or base_url
+            raise ProposalError(
+                _translate_connectivity_error(exc, host)
+            ) from exc
         except Exception as exc:
-            raise ProposalError(f"Discovery agent failed: {exc}") from exc
+            logger.warning(
+                "discovery agent failed",
+                base_url=base_url,
+                error=str(exc),
+                exc_info=True,
+            )
+            raise ProposalError(
+                "The discovery agent encountered an error. Please try again."
+            ) from exc
 
     proposal = AgentProposal(
         proposal_type="discovery",

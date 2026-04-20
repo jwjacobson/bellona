@@ -27,9 +27,12 @@ async def run_query(
     result = None
     try:
         result = await run_nl_query(db, question)
-    except (ProposalError, Exception) as exc:
+    except ProposalError as exc:
         error = str(exc)
-        logger.warning("nl query failed", error=error)
+        logger.warning("nl query failed", question=question, error=error)
+    except Exception as exc:
+        logger.exception("nl query unexpected failure", question=question)
+        error = "The query agent encountered an error. Please try again."
 
     return templates.TemplateResponse(
         request,
