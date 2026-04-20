@@ -18,48 +18,65 @@
 
   {% if result %}
   <div class="space-y-4">
-    <!-- Explanation -->
-    <div class="bg-stone-800 border border-olive-900 p-4">
-      <p class="text-xs text-stone-400 uppercase tracking-wider mb-1">Explanation</p>
-      <p class="text-stone-100 text-sm">{{ result.explanation }}</p>
-    </div>
-
-    <!-- Generated query -->
-    {% if result.query_used %}
-    <div class="bg-stone-800 border border-olive-900 p-4">
-      <p class="text-xs text-stone-400 uppercase tracking-wider mb-2">Generated Query</p>
-      <pre class="text-emerald-500 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{{ result.query_used | tojson(indent=2) }}</pre>
+    <!-- Answer -->
+    {% if result.answer %}
+    <div class="bg-stone-800 border border-emerald-600 p-4">
+      <p class="text-xs text-emerald-500 uppercase tracking-wider mb-1">Answer</p>
+      <p class="text-stone-100 text-base whitespace-pre-wrap">{{ result.answer }}</p>
     </div>
     {% endif %}
 
-    <!-- Results -->
-    <div>
-      <p class="text-xs text-stone-400 uppercase tracking-wider mb-2">
-        Results — {{ result.total_results }} found
-      </p>
-      {% if result.results %}
-      {% set cols = result.results[0].keys() | list %}
-      <table class="w-full text-sm border border-stone-600">
-        <thead>
-          <tr class="bg-stone-800 text-stone-300">
-            {% for col in cols %}
-            <th class="px-4 py-2 text-left font-medium">{{ col }}</th>
-            {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in result.results %}
-          <tr class="border-t border-stone-600">
-            {% for col in cols %}
-            <td class="px-4 py-2 text-stone-100 max-w-xs truncate">{{ row.get(col, "—") }}</td>
-            {% endfor %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="text-stone-400 text-sm py-2">No results found.</p>
-      {% endif %}
+    <div x-data="{ open: false }">
+      <button type="button" @click="open = !open"
+              class="text-xs text-stone-400 hover:text-stone-300 uppercase tracking-wider">
+        <span x-text="open ? 'Details' : 'Details'"></span>
+      </button>
+
+      <div x-show="open" x-cloak class="space-y-4 mt-3">
+        <!-- Explanation -->
+        <div class="bg-stone-800 border border-olive-900 p-4">
+          <p class="text-xs text-stone-400 uppercase tracking-wider mb-1">Explanation</p>
+          <p class="text-stone-100 text-sm">{{ result.explanation }}</p>
+        </div>
+
+        <!-- Generated query -->
+        {% if result.query_used %}
+        <div class="bg-stone-800 border border-olive-900 p-4">
+          <p class="text-xs text-stone-400 uppercase tracking-wider mb-2">Generated Query</p>
+          <pre class="text-emerald-500 text-xs font-mono overflow-x-auto whitespace-pre-wrap">{{ result.query_used | tojson(indent=2) }}</pre>
+        </div>
+        {% endif %}
+
+        <!-- Results -->
+        <div>
+          <p class="text-xs text-stone-400 uppercase tracking-wider mb-2">
+            Results — {{ result.total_results }} found
+          </p>
+          {% if result.results %}
+          {% set cols = result.results[0].keys() | list %}
+          <table class="w-full text-sm border border-stone-600">
+            <thead>
+              <tr class="bg-stone-800 text-stone-300">
+                {% for col in cols %}
+                <th class="px-4 py-2 text-left font-medium">{{ col }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in result.results %}
+              <tr class="border-t border-stone-600">
+                {% for col in cols %}
+                <td class="px-4 py-2 text-stone-100 max-w-xs truncate">{{ row.get(col, "—") }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+          <p class="text-stone-400 text-sm py-2">No results found.</p>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </div>
   {% endif %}

@@ -136,6 +136,7 @@ class NaturalLanguageQueryRequest(BaseModel):
 
 class NaturalLanguageQueryResponse(BaseModel):
     question: str
+    answer: str
     explanation: str
     query_used: dict[str, Any] | None
     results: list[dict[str, Any]]
