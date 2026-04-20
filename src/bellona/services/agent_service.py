@@ -590,6 +590,7 @@ async def run_nl_query(
     entity_type_id: uuid.UUID | None = None,
     *,
     _mock_result: QueryAgentResult | None = None,
+    _mock_answer: str | None = None,
 ) -> NaturalLanguageQueryResponse:
     """Translate a natural language question to a structured query and execute it."""
     from bellona.services.query import query_entities
@@ -664,18 +665,21 @@ async def run_nl_query(
     except ValueError as exc:
         raise ProposalError(f"Query execution failed: {exc}") from exc
 
-    properties_summary = [
-        item.properties for item in page.items[:_SYNTHESIS_MAX_RESULTS]
-    ]
-    try:
-        answer = await _synthesize_answer(
-            question,
-            agent_result.explanation,
-            page.total,
-            properties_summary,
-        )
-    except Exception as exc:
-        raise ProposalError(f"Answer synthesis failed: {exc}") from exc
+    if _mock_answer is not None:
+        answer = _mock_answer
+    else:
+        properties_summary = [
+            item.properties for item in page.items[:_SYNTHESIS_MAX_RESULTS]
+        ]
+        try:
+            answer = await _synthesize_answer(
+                question,
+                agent_result.explanation,
+                page.total,
+                properties_summary,
+            )
+        except Exception as exc:
+            raise ProposalError(f"Answer synthesis failed: {exc}") from exc
 
     logger.info(
         "nl query executed",

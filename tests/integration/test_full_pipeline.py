@@ -243,10 +243,12 @@ async def test_full_pipeline(
         question="Which companies are currently active?",
         entity_type_id=entity_type_id,
         _mock_result=mock_nl,
+        _mock_answer="There are 4 active companies.",
     )
 
     # 4 of the 5 companies have status="active".
     assert nl_response.total_results == 4
+    assert nl_response.answer == "There are 4 active companies."
     assert nl_response.explanation == "Find all active companies, sorted by name."
     assert nl_response.query_used is not None
 
