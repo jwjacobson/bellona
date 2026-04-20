@@ -21,7 +21,7 @@
   </div>
 
   <!-- Main panel -->
-  <div class="flex-1" x-data="explorerPanel()">
+  <div class="flex-1" x-data="explorerPanel({% if selected %}'{{ selected.id }}'{% else %}null{% endif %})">
     {% if selected %}
     <div class="flex items-center justify-between mb-4">
       <div>
@@ -144,15 +144,34 @@
 </div>
 
 <script>
-function explorerPanel() {
+function explorerPanel(entityTypeId) {
   const _cols = [{% if entities %}{% for col in entities[0].properties.keys() %}"{{ col }}"{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}];
+  const storageKey = entityTypeId ? `bellona-columns-${entityTypeId}` : null;
+  let initialVisible = Object.fromEntries(_cols.map(c => [c, true]));
+  if (storageKey) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey));
+      if (Array.isArray(saved)) {
+        const savedSet = new Set(saved);
+        initialVisible = Object.fromEntries(_cols.map(c => [c, savedSet.has(c)]));
+      }
+    } catch (e) { /* ignore malformed JSON */ }
+  }
   return {
     selected: [],
     deleteError: null,
     entityCount: {{ total | default(0) }},
     cols: _cols,
     columnsOpen: false,
-    visibleCols: Object.fromEntries(_cols.map(c => [c, true])),
+    visibleCols: initialVisible,
+
+    init() {
+      if (!storageKey) return;
+      this.$watch('visibleCols', (v) => {
+        const visibleNames = this.cols.filter(c => v[c]);
+        localStorage.setItem(storageKey, JSON.stringify(visibleNames));
+      }, { deep: true });
+    },
 
     toggleAll(checked) {
       if (checked) {
