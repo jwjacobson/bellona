@@ -569,7 +569,9 @@ async def _synthesize_answer(
         "English. Reference specific data points where useful. If the result "
         "set is large, summarize rather than enumerate every row. If there "
         "were no results, say so clearly. Reply with the answer only — no "
-        "preamble, no markdown headings."
+        "preamble. Respond in plain text only: no markdown syntax, no bold "
+        "or italic markers (no *, _, or backticks), no bullet points, no "
+        "headings."
     )
 
     client = anthropic.AsyncAnthropic(api_key=_get_api_key())
