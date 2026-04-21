@@ -49,6 +49,7 @@ class EntityTypeProposalContent(BaseModel):
     reasoning: str
     confidence: float = Field(ge=0.0, le=1.0)
     potential_relationships: list[PotentialRelationship] = Field(default_factory=list)
+    display_property: str | None = None
 
 
 class ProposedRelationship(BaseModel):

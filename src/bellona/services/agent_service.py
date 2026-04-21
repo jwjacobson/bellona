@@ -330,6 +330,7 @@ async def confirm_schema_proposal(
         EntityTypeCreate(
             name=content.entity_type_name,
             description=content.description or None,
+            display_property=content.display_property,
             properties=[
                 PropertyDefinitionCreate(
                     name=p.name,

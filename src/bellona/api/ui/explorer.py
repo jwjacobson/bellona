@@ -38,6 +38,15 @@ async def explorer_entity_type(
     q = EntityQuery(entity_type_id=entity_type_id, limit=_PAGE_SIZE, offset=offset)
     page_result = await query_entities(db, q)
 
+    cols: list[str] = []
+    if page_result.items:
+        first_keys = list(page_result.items[0].properties.keys())
+        display = entity_type.resolve_display_property(available=set(first_keys))
+        if display is not None and display in first_keys:
+            cols = [display] + [k for k in first_keys if k != display]
+        else:
+            cols = first_keys
+
     return templates.TemplateResponse(
         request,
         "explorer/index.html",
@@ -48,5 +57,6 @@ async def explorer_entity_type(
             "page_size": _PAGE_SIZE,
             "entities": page_result.items,
             "total": page_result.total,
+            "cols": cols,
         },
     )

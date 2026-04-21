@@ -40,11 +40,13 @@ class PropertyDefinitionRead(BaseModel):
 class EntityTypeCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     description: str | None = None
+    display_property: str | None = None
     properties: list[PropertyDefinitionCreate] = Field(default_factory=list)
 
 
 class EntityTypePatch(BaseModel):
     description: str | None = None
+    display_property: str | None = None
     add_properties: list[PropertyDefinitionCreate] = Field(default_factory=list)
 
 
@@ -54,6 +56,7 @@ class EntityTypeRead(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None
+    display_property: str | None
     schema_version: int
     created_at: datetime
     updated_at: datetime
@@ -66,6 +69,7 @@ class EntityTypeList(BaseModel):
     id: uuid.UUID
     name: str
     description: str | None
+    display_property: str | None
     schema_version: int
     created_at: datetime
     updated_at: datetime
