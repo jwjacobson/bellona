@@ -72,8 +72,7 @@
     </div>
 
     {% if entities %}
-    <!-- Dynamic columns from first entity's properties -->
-    {% set cols = entities[0].properties.keys() | list %}
+    <!-- Dynamic columns from first entity's properties, ordered with display_property first -->
     <table id="entity-table" class="w-full text-sm border border-olive-900">
       <thead>
         <tr class="bg-stone-800 text-stone-300">
@@ -145,7 +144,7 @@
 
 <script>
 function explorerPanel(entityTypeId) {
-  const _cols = [{% if entities %}{% for col in entities[0].properties.keys() %}"{{ col }}"{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}];
+  const _cols = [{% for col in cols %}"{{ col }}"{% if not loop.last %}, {% endif %}{% endfor %}];
   const storageKey = entityTypeId ? `bellona-columns-${entityTypeId}` : null;
   let initialVisible = Object.fromEntries(_cols.map(c => [c, true]));
   if (storageKey) {

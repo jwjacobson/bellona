@@ -16,6 +16,11 @@
         {% if entity_type.description %}
         <p class="text-stone-400 text-sm mt-1">{{ entity_type.description }}</p>
         {% endif %}
+        {% if entity_type.display_property %}
+        <p class="text-stone-400 text-xs mt-1">
+          Display label: <span class="font-mono text-stone-200">{{ entity_type.display_property }}</span>
+        </p>
+        {% endif %}
         <p class="text-stone-500 text-xs mt-1">Schema v{{ entity_type.schema_version }} · {{ entity_type.id }}</p>
       </div>
       <div class="flex items-center gap-2">

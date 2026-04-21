@@ -22,6 +22,10 @@ Rules:
 - Mark properties as required if they appear non-nullable and semantically essential.
 - Consider existing entity types and avoid duplicating them; propose something distinct.
 - Provide reasoning and a confidence score (0.0–1.0).
+- Choose the single property that best serves as a human-readable label for \
+  this entity type (e.g. 'name', 'title'). Set this as `display_property`. \
+  Prefer short, unique, human-meaningful values. If no property is suitable, \
+  omit it.
 - Detect POTENTIAL RELATIONSHIPS: if any source fields look like foreign-key \
   references to another entity (e.g. `manager_id`, `department_id`, fields containing \
   URLs that point at another resource, nested object/array fields), populate \

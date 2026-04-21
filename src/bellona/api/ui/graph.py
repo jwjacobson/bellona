@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from bellona.api.ui.templates import templates
 from bellona.db.session import get_db
@@ -23,7 +24,11 @@ async def graph_index(request: Request):
 @router.get("/data")
 async def graph_data(db: AsyncSession = Depends(get_db)):
     """Return Cytoscape.js-compatible node/edge data."""
-    et_result = await db.execute(select(EntityType).order_by(EntityType.name))
+    et_result = await db.execute(
+        select(EntityType)
+        .options(selectinload(EntityType.property_definitions))
+        .order_by(EntityType.name)
+    )
     entity_types = {et.id: et for et in et_result.scalars().all()}
 
     ent_result = await db.execute(
@@ -43,16 +48,23 @@ async def graph_data(db: AsyncSession = Depends(get_db)):
     nodes = []
     for entity in entities:
         et = entity_types.get(entity.entity_type_id)
-        label = (
-            str(next(iter(entity.properties.values()), entity.id))
-            if entity.properties
-            else str(entity.id)[:8]
+        props = entity.properties or {}
+        display_prop = (
+            et.resolve_display_property(available=set(props.keys()))
+            if et is not None
+            else None
         )
+        if display_prop is not None and props.get(display_prop) is not None:
+            label = str(props[display_prop])
+        elif props:
+            label = str(next(iter(props.values())))
+        else:
+            label = entity.source_record_id or str(entity.id)[:8]
         nodes.append(
             {
                 "data": {
                     "id": str(entity.id),
-                    "label": str(label)[:40],
+                    "display_label": str(label)[:60],
                     "entity_type": et.name if et else "unknown",
                     "entity_type_id": str(entity.entity_type_id),
                 }

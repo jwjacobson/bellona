@@ -169,6 +169,35 @@ async def test_schema_agent_returns_potential_relationships() -> None:
     assert "naming convention" in signal.basis
 
 
+async def test_schema_agent_proposal_includes_display_property() -> None:
+    proposal = EntityTypeProposalContent(
+        entity_type_name="StockPrice",
+        properties=[
+            ProposedPropertyDefinition(name="ticker", data_type="string", required=True),
+            ProposedPropertyDefinition(name="price", data_type="float", required=True),
+        ],
+        reasoning="",
+        confidence=0.9,
+        display_property="ticker",
+    )
+    agent = SchemaAgent(api_key="test-key")
+    with pytest.MonkeyPatch().context() as mp:
+        mp.setattr(agent, "_run_agent", AsyncMock(return_value=proposal))
+        result = await agent.propose(SAMPLE_SCHEMA, [])
+
+    assert result.display_property == "ticker"
+
+
+async def test_entity_type_proposal_display_property_defaults_to_none() -> None:
+    proposal = EntityTypeProposalContent(
+        entity_type_name="Foo",
+        properties=[],
+        reasoning="",
+        confidence=0.5,
+    )
+    assert proposal.display_property is None
+
+
 async def test_entity_type_proposal_defaults_to_empty_relationships() -> None:
     proposal = EntityTypeProposalContent(
         entity_type_name="Foo",

@@ -298,6 +298,60 @@ async def test_confirm_schema_proposal_creates_entity_type(
     assert proposal.status == "confirmed"
 
 
+async def test_confirm_schema_proposal_persists_display_property(
+    db_session: AsyncSession,
+) -> None:
+    unique_name = f"Displayed-{uuid.uuid4().hex[:6]}"
+    proposal = AgentProposal(
+        proposal_type="entity_type",
+        status="proposed",
+        content={
+            "entity_type_name": unique_name,
+            "description": "",
+            "properties": [
+                {"name": "ticker", "data_type": "string", "required": True},
+                {"name": "price", "data_type": "float", "required": False},
+            ],
+            "reasoning": "",
+            "confidence": 0.9,
+            "display_property": "ticker",
+        },
+        confidence=0.9,
+    )
+    db_session.add(proposal)
+    await db_session.flush()
+
+    entity_type = await confirm_schema_proposal(db_session, proposal.id)
+
+    assert entity_type.display_property == "ticker"
+
+
+async def test_confirm_schema_proposal_without_display_property(
+    db_session: AsyncSession,
+) -> None:
+    unique_name = f"NoDisplay-{uuid.uuid4().hex[:6]}"
+    proposal = AgentProposal(
+        proposal_type="entity_type",
+        status="proposed",
+        content={
+            "entity_type_name": unique_name,
+            "description": "",
+            "properties": [
+                {"name": "x", "data_type": "integer", "required": True},
+            ],
+            "reasoning": "",
+            "confidence": 0.9,
+        },
+        confidence=0.9,
+    )
+    db_session.add(proposal)
+    await db_session.flush()
+
+    entity_type = await confirm_schema_proposal(db_session, proposal.id)
+
+    assert entity_type.display_property is None
+
+
 async def test_confirm_schema_proposal_wrong_type(db_session: AsyncSession) -> None:
     from bellona.services.agent_service import ProposalError
 

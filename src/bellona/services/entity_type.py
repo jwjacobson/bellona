@@ -27,7 +27,11 @@ async def _load_entity_type(
 
 
 async def create_entity_type(db: AsyncSession, data: EntityTypeCreate) -> EntityType:
-    entity_type = EntityType(name=data.name, description=data.description)
+    entity_type = EntityType(
+        name=data.name,
+        description=data.description,
+        display_property=data.display_property,
+    )
     db.add(entity_type)
     try:
         await db.flush()
@@ -101,6 +105,9 @@ async def patch_entity_type(
 ) -> EntityType:
     if data.description is not None:
         entity_type.description = data.description
+
+    if data.display_property is not None:
+        entity_type.display_property = data.display_property
 
     if data.add_properties:
         entity_type.schema_version += 1

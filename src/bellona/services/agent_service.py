@@ -330,6 +330,7 @@ async def confirm_schema_proposal(
         EntityTypeCreate(
             name=content.entity_type_name,
             description=content.description or None,
+            display_property=content.display_property,
             properties=[
                 PropertyDefinitionCreate(
                     name=p.name,
@@ -517,6 +518,8 @@ async def confirm_relationship_proposal(
             source_entity_type_id=src.id,
             target_entity_type_id=tgt.id,
             cardinality=rel.cardinality,
+            source_property=rel.source_field,
+            target_property="id",
             properties={"source_field": rel.source_field},
         )
         db.add(rt)

@@ -218,6 +218,35 @@ async def test_proposals_propose_mapping_shows_error_on_failure(
     assert "Mapper agent failed" in response.text
 
 
+async def test_proposals_page_renders_display_property(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
+    et_name = f"UIDisp-{uuid.uuid4().hex[:6]}"
+    content = EntityTypeProposalContent(
+        entity_type_name=et_name,
+        properties=[
+            ProposedPropertyDefinition(name="ticker", data_type="string", required=True),
+            ProposedPropertyDefinition(name="price", data_type="float"),
+        ],
+        reasoning="",
+        confidence=0.9,
+        display_property="ticker",
+    )
+    proposal = AgentProposal(
+        proposal_type="entity_type",
+        status="proposed",
+        content=content.model_dump(),
+        confidence=0.9,
+    )
+    db_session.add(proposal)
+    await db_session.flush()
+
+    response = await client.get("/ui/proposals")
+    assert response.status_code == 200
+    assert "Display label" in response.text
+    assert "ticker" in response.text
+
+
 # ── Relationship proposals ────────────────────────────────────────────────────
 
 
