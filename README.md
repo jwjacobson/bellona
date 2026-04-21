@@ -6,7 +6,7 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Bellona is a universal data ontology platform inspired by tools like Palantir -- built for developers who want to ingest heterogeneous data, map it to a dynamic semantic layer, and query it meaningfully. You define an ontology at runtime (not in code), AI agents propose how your data maps to it, and you confirm or reject those proposals before anything is stored. It is built with FastAPI, SQLAlchemy (async), PostgreSQL with JSONB, and Agno for multi-agent orchestration, with an htmx/Alpine.js frontend.
+Bellona is a universal data ontology platform. Point it at any data source — CSV or REST API — and it builds a semantic layer automatically. AI agents discover your data's structure, propose entity types and relationships, and map source fields to ontology properties. You review and confirm every proposal before it takes effect. Once data is ingested, query it in plain English, browse it in an explorer, and visualize relationships as a graph. More or less Palantir Foundry, but open-source, human-in-the-loop, and made for developers. Built with FastAPI, async SQLAlchemy, PostgreSQL/JSONB, Agno for multi-agent orchestration, and htmx/Alpine.js.
 
 ## Setup
 At present, Bellona is not deployed to the web, so you will have to run it locally.
