@@ -90,6 +90,8 @@ class RelationshipType(Base):
         ForeignKey("entity_types.id", ondelete="RESTRICT"), nullable=False
     )
     cardinality: Mapped[str] = mapped_column(String(20), nullable=False)
+    source_property: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    target_property: Mapped[str | None] = mapped_column(String(255), nullable=True)
     properties: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     source_entity_type: Mapped["EntityType"] = relationship(

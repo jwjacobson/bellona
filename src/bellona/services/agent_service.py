@@ -518,6 +518,8 @@ async def confirm_relationship_proposal(
             source_entity_type_id=src.id,
             target_entity_type_id=tgt.id,
             cardinality=rel.cardinality,
+            source_property=rel.source_field,
+            target_property="id",
             properties={"source_field": rel.source_field},
         )
         db.add(rt)

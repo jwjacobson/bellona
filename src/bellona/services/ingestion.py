@@ -13,8 +13,8 @@ from bellona.connectors.csv_connector import CSVConnector
 from bellona.connectors.rest_connector import RESTConnector
 from bellona.core.logging import bind_job_context
 from bellona.db.session import AsyncSessionLocal
-from bellona.models.entities import Entity
-from bellona.models.ontology import EntityType
+from bellona.models.entities import Entity, Relationship
+from bellona.models.ontology import EntityType, RelationshipType
 from bellona.models.system import Connector, FieldMapping, IngestionJob
 from bellona.ontology.validator import validate_record
 from bellona.schemas.connectors import ConnectorPatch
@@ -158,6 +158,86 @@ def _serialize_for_json(props: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+async def _resolve_relationships(
+    db: AsyncSession,
+    source_entity_type_id: uuid.UUID,
+    source_entities: list[Entity],
+) -> int:
+    """Create Relationship rows for confirmed RelationshipTypes whose source
+    entity type matches the entity type just ingested. Skip when the source
+    property is null, or when no target entity with the matching value exists
+    — Issue #2 covers retroactive resolution for later-arriving targets."""
+    if not source_entities:
+        return 0
+
+    rt_result = await db.execute(
+        select(RelationshipType).where(
+            RelationshipType.source_entity_type_id == source_entity_type_id
+        )
+    )
+    rel_types = list(rt_result.scalars().all())
+
+    created = 0
+    for rt in rel_types:
+        src_prop = rt.source_property
+        tgt_prop = rt.target_property
+        if not src_prop or not tgt_prop:
+            logger.debug(
+                "skipping relationship type without source/target property",
+                relationship_type_id=str(rt.id),
+                name=rt.name,
+            )
+            continue
+
+        refs: list[tuple[Entity, Any]] = []
+        for entity in source_entities:
+            val = entity.properties.get(src_prop)
+            if val is None:
+                continue
+            refs.append((entity, val))
+        if not refs:
+            continue
+
+        unique_values = list({str(v) for _, v in refs})
+        target_result = await db.execute(
+            select(Entity).where(
+                Entity.entity_type_id == rt.target_entity_type_id,
+                Entity.properties[tgt_prop].astext.in_(unique_values),
+            )
+        )
+        by_value: dict[str, Entity] = {
+            str(t.properties.get(tgt_prop)): t
+            for t in target_result.scalars().all()
+        }
+
+        rt_created = 0
+        for entity, val in refs:
+            target = by_value.get(str(val))
+            if target is None:
+                continue
+            db.add(
+                Relationship(
+                    relationship_type_id=rt.id,
+                    source_entity_id=entity.id,
+                    target_entity_id=target.id,
+                )
+            )
+            rt_created += 1
+
+        created += rt_created
+        logger.info(
+            "relationships resolved for type",
+            relationship_type_id=str(rt.id),
+            name=rt.name,
+            created=rt_created,
+            unresolved=len(refs) - rt_created,
+        )
+
+    if created:
+        await db.flush()
+    return created
+
+
 async def _load_entity_type(
     db: AsyncSession, entity_type_id: uuid.UUID
 ) -> EntityType | None:
@@ -237,6 +317,7 @@ async def _execute_ingestion_job(job_id: uuid.UUID, db: AsyncSession) -> None:
         records_processed = 0
         records_failed = 0
         error_entries: list[dict[str, Any]] = []
+        new_entities: list[Entity] = []
 
         async for source_record in connector_instance.fetch_records():
             mapped = _apply_mapping(source_record.data, mapping.mapping_config)
@@ -254,6 +335,7 @@ async def _execute_ingestion_job(job_id: uuid.UUID, db: AsyncSession) -> None:
                     ),
                 )
                 db.add(entity)
+                new_entities.append(entity)
                 records_processed += 1
             else:
                 records_failed += 1
@@ -276,6 +358,18 @@ async def _execute_ingestion_job(job_id: uuid.UUID, db: AsyncSession) -> None:
 
         await db.flush()
 
+        relationships_created = 0
+        try:
+            relationships_created = await _resolve_relationships(
+                db, entity_type.id, new_entities
+            )
+        except Exception as exc:
+            logger.warning(
+                "relationship resolution failed; entities were ingested",
+                error=str(exc),
+                exc_info=True,
+            )
+
         job.status = "completed"
         job.records_processed = records_processed
         job.records_failed = records_failed
@@ -289,6 +383,7 @@ async def _execute_ingestion_job(job_id: uuid.UUID, db: AsyncSession) -> None:
             "ingestion job completed",
             records_processed=records_processed,
             records_failed=records_failed,
+            relationships_created=relationships_created,
         )
 
     except Exception as exc:

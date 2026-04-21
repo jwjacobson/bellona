@@ -23,6 +23,8 @@ async def create_relationship_type(
         source_entity_type_id=data.source_entity_type_id,
         target_entity_type_id=data.target_entity_type_id,
         cardinality=data.cardinality,
+        source_property=data.source_property,
+        target_property=data.target_property,
         properties=data.properties,
     )
     db.add(rel_type)

@@ -83,6 +83,8 @@ class RelationshipTypeCreate(BaseModel):
     source_entity_type_id: uuid.UUID
     target_entity_type_id: uuid.UUID
     cardinality: Cardinality
+    source_property: str | None = None
+    target_property: str | None = None
     properties: dict | None = None
 
 
@@ -94,4 +96,6 @@ class RelationshipTypeRead(BaseModel):
     source_entity_type_id: uuid.UUID
     target_entity_type_id: uuid.UUID
     cardinality: str
+    source_property: str | None
+    target_property: str | None
     properties: dict | None
