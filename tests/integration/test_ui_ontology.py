@@ -29,6 +29,40 @@ async def test_entity_type_detail(client: AsyncClient) -> None:
     assert "ticker" in response.text
 
 
+async def test_entity_type_detail_shows_display_property(client: AsyncClient) -> None:
+    create = await client.post(
+        "/api/v1/entity-types",
+        json={
+            "name": "UIDisplayLabelType",
+            "display_property": "ticker",
+            "properties": [{"name": "ticker", "data_type": "string"}],
+        },
+    )
+    entity_type_id = create.json()["id"]
+
+    response = await client.get(f"/ui/ontology/entity-types/{entity_type_id}")
+    assert response.status_code == 200
+    assert "Display label" in response.text
+    assert "ticker" in response.text
+
+
+async def test_entity_type_detail_hides_display_label_when_unset(
+    client: AsyncClient,
+) -> None:
+    create = await client.post(
+        "/api/v1/entity-types",
+        json={
+            "name": "UINoDisplayType",
+            "properties": [{"name": "x", "data_type": "string"}],
+        },
+    )
+    entity_type_id = create.json()["id"]
+
+    response = await client.get(f"/ui/ontology/entity-types/{entity_type_id}")
+    assert response.status_code == 200
+    assert "Display label" not in response.text
+
+
 async def test_relationships_index(client: AsyncClient) -> None:
     response = await client.get("/ui/ontology/relationships")
     assert response.status_code == 200
