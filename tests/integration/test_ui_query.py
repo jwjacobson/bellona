@@ -70,3 +70,19 @@ async def test_query_submit_renders_synthesized_answer(
 
     assert response.status_code == 200
     assert "There is one company named Acme." in response.text
+
+
+async def test_query_submit_renders_agent_error(client: AsyncClient) -> None:
+    """Agent failures should render a user-facing error, not a 500."""
+    with patch(
+        "bellona.services.agent_service.QueryAgent.translate",
+        new=AsyncMock(side_effect=RuntimeError("anthropic boom")),
+    ):
+        response = await client.post(
+            "/ui/query",
+            data={"question": "Show me everything"},
+        )
+
+    assert response.status_code == 200
+    assert "query agent encountered an error" in response.text.lower()
+    assert "anthropic boom" not in response.text

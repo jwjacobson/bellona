@@ -182,15 +182,13 @@ async def discover_api_ui(
         )
 
 
-@router.get("/{connector_id}")
-async def connector_detail(
-    request: Request,
-    connector_id: uuid.UUID,
-    db: AsyncSession = Depends(get_db),
-):
+async def _connector_detail_context(
+    db: AsyncSession, connector_id: uuid.UUID
+) -> dict | None:
+    """Build the template context for the connector detail page. Returns None if not found."""
     connector = await get_connector(db, connector_id)
     if connector is None:
-        return templates.TemplateResponse(request, "404.html", {}, status_code=404)
+        return None
 
     result = await db.execute(
         select(IngestionJob)
@@ -200,11 +198,9 @@ async def connector_detail(
     )
     jobs = list(result.scalars().all())
 
-    # Load entity types for the mapping proposal dropdown
     et_result = await db.execute(select(EntityType).order_by(EntityType.name))
     entity_types = list(et_result.scalars().all())
 
-    # Pipeline state: schema proposal
     schema_result = await db.execute(
         select(AgentProposal)
         .where(
@@ -216,7 +212,6 @@ async def connector_detail(
     )
     schema_proposal = schema_result.scalar_one_or_none()
 
-    # Pipeline state: mapping proposal
     mapping_prop_result = await db.execute(
         select(AgentProposal)
         .where(
@@ -228,7 +223,6 @@ async def connector_detail(
     )
     mapping_proposal = mapping_prop_result.scalar_one_or_none()
 
-    # Pipeline state: relationship proposal
     rel_prop_result = await db.execute(
         select(AgentProposal)
         .where(
@@ -240,7 +234,6 @@ async def connector_detail(
     )
     relationship_proposal = rel_prop_result.scalar_one_or_none()
 
-    # Confirmed field mapping
     fm_result = await db.execute(
         select(FieldMapping)
         .where(
@@ -252,7 +245,6 @@ async def connector_detail(
     )
     field_mapping = fm_result.scalar_one_or_none()
 
-    # Confirmed entity type (from confirmed schema proposal)
     confirmed_entity_type = None
     if (
         schema_proposal
@@ -266,24 +258,31 @@ async def connector_detail(
         )
         confirmed_entity_type = et_load.scalar_one_or_none()
 
-    # Most recent completed job for sync info
     last_completed_job = next((j for j in jobs if j.status == "completed"), None)
 
-    return templates.TemplateResponse(
-        request,
-        "connectors/detail.html",
-        {
-            "connector": connector,
-            "jobs": jobs,
-            "entity_types": entity_types,
-            "schema_proposal": schema_proposal,
-            "mapping_proposal": mapping_proposal,
-            "relationship_proposal": relationship_proposal,
-            "field_mapping": field_mapping,
-            "confirmed_entity_type": confirmed_entity_type,
-            "last_completed_job": last_completed_job,
-        },
-    )
+    return {
+        "connector": connector,
+        "jobs": jobs,
+        "entity_types": entity_types,
+        "schema_proposal": schema_proposal,
+        "mapping_proposal": mapping_proposal,
+        "relationship_proposal": relationship_proposal,
+        "field_mapping": field_mapping,
+        "confirmed_entity_type": confirmed_entity_type,
+        "last_completed_job": last_completed_job,
+    }
+
+
+@router.get("/{connector_id}")
+async def connector_detail(
+    request: Request,
+    connector_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    ctx = await _connector_detail_context(db, connector_id)
+    if ctx is None:
+        return templates.TemplateResponse(request, "404.html", {}, status_code=404)
+    return templates.TemplateResponse(request, "connectors/detail.html", ctx)
 
 
 @router.post("/{connector_id}/sync")
@@ -318,6 +317,12 @@ async def propose_schema_ui(
         logger.warning(
             "schema proposal failed", connector_id=str(connector_id), error=str(exc)
         )
+        await db.rollback()
+        ctx = await _connector_detail_context(db, connector_id) or {}
+        ctx["error"] = str(exc)
+        return templates.TemplateResponse(
+            request, "connectors/detail.html", ctx, status_code=422
+        )
     return RedirectResponse(url=f"/ui/connectors/{connector_id}", status_code=303)
 
 
@@ -339,6 +344,12 @@ async def propose_mapping_ui(
             "mapping proposal failed",
             connector_id=str(connector_id),
             error=str(exc),
+        )
+        await db.rollback()
+        ctx = await _connector_detail_context(db, connector_id) or {}
+        ctx["error"] = str(exc)
+        return templates.TemplateResponse(
+            request, "connectors/detail.html", ctx, status_code=422
         )
     return RedirectResponse(url=f"/ui/connectors/{connector_id}", status_code=303)
 

@@ -74,15 +74,14 @@
     </div>
   </nav>
 
-  <!-- Flash message -->
-  {% if error %}
-  <div class="bg-red-900 border-b border-red-700 px-6 py-3 text-red-300 text-sm">
-    {{ error }}
-  </div>
-  {% endif %}
-
   <!-- Main content -->
   <main class="p-6">
+    {% if error %}
+    <div class="mb-6 bg-stone-800 border border-red-700 border-l-4 border-l-red-500 p-4">
+      <p class="text-xs text-red-400 uppercase tracking-wider mb-1">Error</p>
+      <p class="text-stone-100 text-sm whitespace-pre-wrap font-mono">{{ error }}</p>
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

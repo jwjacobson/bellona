@@ -1,6 +1,7 @@
 {% if error %}
-<div class="mt-3 px-3 py-2 border border-red-800 bg-stone-800 text-red-300 text-sm">
-    Discovery failed: {{ error }}
+<div class="mt-3 bg-stone-800 border border-red-700 border-l-4 border-l-red-500 p-3">
+    <p class="text-xs text-red-400 uppercase tracking-wider mb-1">Discovery failed</p>
+    <p class="text-stone-100 text-sm font-mono whitespace-pre-wrap">{{ error }}</p>
 </div>
 {% else %}
 <div class="mt-3 px-3 py-2 border border-emerald-800 bg-stone-800 text-sm">

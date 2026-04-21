@@ -429,3 +429,117 @@ async def test_check_quality_returns_report(db_session: AsyncSession) -> None:
 async def test_check_quality_404_entity_type(db_session: AsyncSession) -> None:
     with pytest.raises(ProposalError, match="Entity type"):
         await check_quality(db_session, uuid.uuid4())
+
+
+# ── Error translation ─────────────────────────────────────────────────────────
+
+
+async def test_translate_connectivity_error_ssl() -> None:
+    import httpx
+
+    from bellona.services.agent_service import _translate_connectivity_error
+
+    exc = httpx.ConnectError("[SSL: CERTIFICATE_VERIFY_FAILED] certificate has expired")
+    msg = _translate_connectivity_error(exc, "swapi.dev")
+    assert "SSL certificate error" in msg
+    assert "swapi.dev" in msg
+
+
+async def test_translate_connectivity_error_connect() -> None:
+    import httpx
+
+    from bellona.services.agent_service import _translate_connectivity_error
+
+    exc = httpx.ConnectError("name or service not known")
+    msg = _translate_connectivity_error(exc, "example.com")
+    assert "Could not connect to example.com" in msg
+
+
+async def test_translate_connectivity_error_timeout() -> None:
+    import httpx
+
+    from bellona.services.agent_service import _translate_connectivity_error
+
+    exc = httpx.ConnectTimeout("timed out")
+    msg = _translate_connectivity_error(exc, "slow.example.com")
+    assert "timed out" in msg
+    assert "slow.example.com" in msg
+
+
+async def test_translate_connectivity_error_http_status() -> None:
+    import httpx
+
+    from bellona.services.agent_service import _translate_connectivity_error
+
+    request = httpx.Request("GET", "https://api.example.com/data")
+    response = httpx.Response(503, request=request)
+    exc = httpx.HTTPStatusError("bad", request=request, response=response)
+    msg = _translate_connectivity_error(exc, "api.example.com")
+    assert "HTTP 503" in msg
+    assert "api.example.com" in msg
+
+
+async def test_propose_schema_connectivity_error_wraps_host(
+    db_session: AsyncSession,
+) -> None:
+    import httpx
+
+    from bellona.services.agent_service import propose_schema
+
+    connector = await create_connector(
+        db_session,
+        "rest_api",
+        f"conn-err-{uuid.uuid4().hex[:4]}",
+        {
+            "base_url": "https://swapi.dev/api",
+            "endpoint": "/people",
+            "records_jsonpath": "$.results",
+            "pagination": {"strategy": "none"},
+        },
+    )
+    await db_session.flush()
+
+    from unittest.mock import patch
+
+    async def fake_discover_schema(self):
+        raise httpx.ConnectError("nodename nor servname provided")
+
+    with patch(
+        "bellona.connectors.rest_connector.RESTConnector.discover_schema",
+        new=fake_discover_schema,
+    ):
+        with pytest.raises(ProposalError, match="swapi.dev") as excinfo:
+            await propose_schema(db_session, connector.id)
+    assert "Could not connect" in str(excinfo.value)
+
+
+async def test_propose_schema_agent_error_is_generic(
+    db_session: AsyncSession,
+    tmp_path,
+) -> None:
+    from unittest.mock import patch
+
+    from bellona.services.agent_service import propose_schema
+
+    csv_file = tmp_path / "schema.csv"
+    csv_file.write_text(SAMPLE_CSV)
+    connector = await create_connector(
+        db_session,
+        "csv",
+        f"conn-agent-err-{uuid.uuid4().hex[:4]}",
+        {"file_path": str(csv_file)},
+    )
+    await db_session.flush()
+
+    async def boom(*args, **kwargs):
+        raise RuntimeError("anthropic rate limit")
+
+    with patch(
+        "bellona.agents.schema_agent.SchemaAgent.propose", new=boom
+    ):
+        with pytest.raises(ProposalError) as excinfo:
+            await propose_schema(db_session, connector.id)
+
+    # Generic message, no raw exception details leaked.
+    assert "schema agent encountered an error" in str(excinfo.value).lower()
+    assert "anthropic rate limit" not in str(excinfo.value)
