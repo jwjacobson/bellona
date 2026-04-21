@@ -170,6 +170,11 @@
                 {% endfor %}
               </div>
               {% endif %}
+              {% if proposal.content.get('display_property') %}
+              <p class="text-xs text-stone-400 mt-2">
+                Display label: <span class="font-mono text-stone-200">{{ proposal.content['display_property'] }}</span>
+              </p>
+              {% endif %}
               {% if proposal.content.get('potential_relationships') %}
               <p class="text-xs text-stone-400 mt-3 mb-1">Potential relationships detected:</p>
               <div class="space-y-1">
