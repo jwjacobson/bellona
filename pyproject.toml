@@ -19,6 +19,7 @@ dependencies = [
     "psycopg2-binary>=2.9.11",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.13.1",
+    "slowapi>=0.1.9",
     "sqlalchemy>=2.0.48",
     "structlog>=25.5.0",
 ]
