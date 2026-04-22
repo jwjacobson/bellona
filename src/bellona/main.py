@@ -4,10 +4,14 @@ import structlog
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from bellona.api.ui import router as ui_router
 from bellona.api.v1 import router as v1_router
 from bellona.core.config import get_settings
+from bellona.core.limiter import limiter
 from bellona.core.logging import setup_logging
 
 settings = get_settings()
@@ -23,6 +27,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Bellona", version="0.1.0", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 app.include_router(v1_router)
 app.include_router(ui_router)
 app.mount("/static", StaticFiles(directory="static"), name="static")

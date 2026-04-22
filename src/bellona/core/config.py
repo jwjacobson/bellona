@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     demo_mode: bool = False
     demo_max_agent_calls: int = 10
     demo_max_query_length: int = 500
+    demo_global_rate_limit: int = 100
 
     model_config = {
         "env_file": os.getenv("ENV_FILE", ".env"),
