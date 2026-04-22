@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import structlog
 from fastapi import FastAPI
@@ -13,6 +14,9 @@ from bellona.api.v1 import router as v1_router
 from bellona.core.config import get_settings
 from bellona.core.limiter import limiter
 from bellona.core.logging import setup_logging
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 settings = get_settings()
 setup_logging(level="DEBUG" if settings.debug else "INFO")
@@ -32,8 +36,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 app.include_router(v1_router)
 app.include_router(ui_router)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 @app.get("/health")
 async def health() -> dict:
