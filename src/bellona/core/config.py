@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     data_dir: str = "/tmp/bellona_uploads"
     claude_api_key: str = ""
     claude_model: str = "claude-sonnet-4-6"
+    demo_mode: bool = False
+    demo_max_agent_calls: int = 10
+    demo_max_query_length: int = 500
 
     model_config = {
         "env_file": os.getenv("ENV_FILE", ".env"),
