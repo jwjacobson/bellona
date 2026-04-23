@@ -30,7 +30,13 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Bellona", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Bellona",
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url=None if not settings.debug else "/docs",
+    redoc_url=None if not settings.debug else "/redoc",
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
