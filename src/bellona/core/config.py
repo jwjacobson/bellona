@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     model_config = {
         "env_file": os.getenv("ENV_FILE", ".env"),
         "env_file_encoding": "utf-8",
+        "extra": "ignore",
     }
 
 
