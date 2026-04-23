@@ -165,6 +165,14 @@ async def discover_api_ui(
     base_url: str = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
+    settings = get_settings()
+    if settings.demo_mode:
+        return templates.TemplateResponse(
+            request,
+            "connectors/_discover_result.html",
+            {"error": "Discovery is disabled in demo mode. Run Bellona locally for full access."},
+        )
+
     from bellona.services.agent_service import discover_api
 
     try:
