@@ -123,15 +123,6 @@ async def create_rest_connector(
     db: AsyncSession = Depends(get_db),
 ):
 
-    settings = get_settings()
-    if settings.demo_mode:
-        return templates.TemplateResponse(
-            request,
-            "connectors/index.html",
-            {
-                "error": "New REST connectors are disabled in demo mode. Run Bellona locally for full access.",
-            },
-        )
 
     config = {
         "base_url": base_url,

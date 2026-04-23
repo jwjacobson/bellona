@@ -4,6 +4,7 @@ import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from bellona.core.config import get_settings
 from bellona.db.session import get_db
 from bellona.models.system import AgentProposal
 from bellona.schemas.agents import (
@@ -96,6 +97,14 @@ async def discover_api_endpoint(
     data: DiscoveryRequest,
     db: AsyncSession = Depends(get_db),
 ) -> AgentProposalRead:
+    settings = get_settings()
+    
+    if settings.demo_mode:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Discovery is disabled in demo mode. Run Bellona locally for full access.",
+        )
+
     try:
         proposal = await discover_api(db, data.base_url, data.auth_config)
     except ProposalError as exc:
