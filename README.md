@@ -8,9 +8,13 @@
 
 Bellona is a universal data ontology platform. Point it at any data source — CSV or REST API — and it builds a semantic layer automatically. AI agents discover your data's structure, propose entity types and relationships, and map source fields to ontology properties. You review and confirm every proposal before it takes effect. Once data is ingested, query it in plain English, browse it in an explorer, and visualize relationships as a graph. More or less Palantir Foundry, but open-source, human-in-the-loop, and made for developers. Built with FastAPI, async SQLAlchemy, PostgreSQL/JSONB, Agno for multi-agent orchestration, and htmx/Alpine.js.
 
-## Setup
-At present, Bellona is not deployed to the web, so you will have to run it locally.
+## Demo app
+A demo version of Bellona is now live on the web. Go to [bellona.sh](https://bellona.sh) to try it out. It comes pre-loaded with an employee dataset and Star Wars API connectors so you can explore the full proposal and ingestion workflow without any setup.
 
+> [!NOTE]
+> The demo app is rate-limited, and creating new REST connectors is disabled. To explore Bellona's full features, please install it locally, as outlined below. 
+
+## Local Installation
 ### Prerequisites
 - PostgreSQL running locally
 - Python 3.14+

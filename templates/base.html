@@ -48,7 +48,7 @@
   </style>
   <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 </head>
-<body class="bg-stone-700 text-stone-100 min-h-screen">
+<body class="bg-stone-700 text-stone-100 min-h-screen flex flex-col">
 
   <!-- Nav -->
   <nav class="bg-stone-800 border-b border-olive-900">
@@ -75,7 +75,7 @@
   </nav>
 
   <!-- Main content -->
-  <main class="p-6">
+  <main class="p-6 flex-1">
     {% if error %}
     <div class="mb-6 bg-stone-800 border border-red-700 p-4">
       <p class="text-xs text-red-400 uppercase tracking-wider mb-1">Error</p>
@@ -85,5 +85,10 @@
     {% block content %}{% endblock %}
   </main>
 
+  <footer class="pl-3 pb-1 text-xs text-stone-600">
+    <span class="text-stone-400">&copy; 2026 Jeff Jacobson</span> |
+    <a class="text-emerald-600" href="https://github.com/jwjacobson/bellona" target="_blank">source</a> |
+    <a class="text-amber-500" href="https://github.com/jwjacobson/bellona/blob/main/LICENSE" target="_blank">GPLv3</a>
+  </footer>
 </body>
 </html>
