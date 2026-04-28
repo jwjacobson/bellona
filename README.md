@@ -158,6 +158,22 @@ WHERE entity_type_id = '{ENTITY_TYPE_ID}'
 ORDER BY (properties->>'employee_count')::int DESC;
 ```
 
+## Contributing
+
+Contributions are welcome!
+
+I will review any PRs but I'd prefer if you open an issue first here on the repo so we can discuss things before any code gets written or submitted.
+
+Please make sure your code passes the existing tests before submitting:
+
+```bash
+uv run pytest
+# or, if you have just installed:
+just test
+```
+
+It would also be great if you could add some tests to cover any new code.
+
 
 ## License
 
