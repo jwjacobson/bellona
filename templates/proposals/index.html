@@ -288,70 +288,8 @@
     {% endif %}
   </div>
 
-  <!-- Sidebar: Propose Mapping -->
+  <!-- Sidebar: Flow guide -->
   <div class="w-80 shrink-0">
-    <h2 class="text-base font-bold tracking-wide text-stone-100 mb-3">Propose Mapping</h2>
-    <p class="text-xs text-stone-400 mb-3">
-      After confirming a schema proposal, use this to have the Mapper Agent create field mappings
-      between a connector and an entity type.
-    </p>
-    {% if entity_types and connectors %}
-    <form method="post" action="/ui/proposals/propose-mapping" class="space-y-3">
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Connector *</label>
-        <select name="connector_id"
-                class="w-full bg-stone-800 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-          {% for conn in connectors.values() %}
-          <option value="{{ conn.id }}">{{ conn.name }} ({{ conn.type }})</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Entity Type *</label>
-        <select name="entity_type_id"
-                class="w-full bg-stone-800 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-          {% for et in entity_types %}
-          <option value="{{ et.id }}">{{ et.name }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <button type="submit"
-              class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-4 border border-emerald-600">
-        Propose Mapping
-      </button>
-    </form>
-    {% elif not entity_types %}
-    <p class="text-stone-500 text-sm">No entity types yet. Confirm a schema proposal first.</p>
-    {% else %}
-    <p class="text-stone-500 text-sm">No connectors yet. Create one in the <a href="/ui/connectors" class="text-emerald-600 hover:text-emerald-500">Connectors</a> panel.</p>
-    {% endif %}
-
-    {% if schema_proposals_with_signals %}
-    <h2 class="text-base font-bold tracking-wide text-stone-100 mb-3 mt-6">Propose Relationships</h2>
-    <p class="text-xs text-stone-400 mb-3">
-      Confirmed schemas with detected relationship signals. Run the Relationship Agent
-      to produce formal proposals.
-    </p>
-    <form method="post" action="/ui/proposals/propose-relationships" class="space-y-3">
-      <div>
-        <label class="block text-xs text-stone-400 mb-1 uppercase tracking-wider">Schema Proposal *</label>
-        <select name="schema_proposal_id"
-                class="w-full bg-stone-800 border border-olive-900 text-stone-100 px-3 py-2 text-sm focus:outline-none focus:border-emerald-600">
-          {% for sp in schema_proposals_with_signals %}
-          <option value="{{ sp.id }}">
-            {{ sp.content.get('entity_type_name', '—') }}
-            ({{ sp.content.get('potential_relationships') | length }} signal{{ 's' if sp.content.get('potential_relationships') | length != 1 }})
-          </option>
-          {% endfor %}
-        </select>
-      </div>
-      <button type="submit"
-              class="w-full bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-medium py-2 px-4 border border-emerald-600">
-        Propose Relationships
-      </button>
-    </form>
-    {% endif %}
-
     <!-- Flow guide -->
     <div class="mt-6 border border-stone-600 p-4">
       <h3 class="text-xs font-bold text-stone-300 uppercase tracking-wider mb-2">Ingestion Flow</h3>
