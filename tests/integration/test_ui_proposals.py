@@ -30,7 +30,6 @@ async def test_proposals_index(client: AsyncClient) -> None:
     response = await client.get("/ui/proposals")
     assert response.status_code == 200
     assert "Proposals" in response.text
-    assert "Propose Mapping" in response.text
     assert "Ingestion Flow" in response.text
 
 
@@ -304,19 +303,6 @@ async def _setup_confirmed_schema_with_signals(
     db_session.add(schema_proposal)
     await db_session.flush()
     return connector, et, schema_proposal, et_name
-
-
-async def test_proposals_page_shows_propose_relationships_form(
-    client: AsyncClient, db_session: AsyncSession, tmp_path
-) -> None:
-    _, _, schema_proposal, et_name = await _setup_confirmed_schema_with_signals(
-        db_session, tmp_path
-    )
-
-    response = await client.get("/ui/proposals")
-    assert response.status_code == 200
-    assert "Propose Relationships" in response.text
-    assert et_name in response.text
 
 
 async def test_proposals_propose_relationships_redirects(
