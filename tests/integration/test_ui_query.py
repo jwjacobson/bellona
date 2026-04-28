@@ -21,12 +21,30 @@ async def test_query_index(client: AsyncClient) -> None:
     assert "Query" in response.text
 
 
-async def test_query_submit_returns_results_page(client: AsyncClient) -> None:
+async def test_query_submit_returns_results_page(
+    client: AsyncClient, db_session: AsyncSession
+) -> None:
     """POST to /ui/query should render results even with an empty ontology."""
-    response = await client.post(
-        "/ui/query",
-        data={"question": "Show me all companies"},
+    mock_result = QueryAgentResult(
+        entity_type_name="Company",
+        filters=None,
+        sort=[],
+        explanation="All companies.",
+        confidence=0.9,
     )
+
+    with patch(
+        "bellona.services.agent_service.QueryAgent.translate",
+        new=AsyncMock(return_value=mock_result),
+    ), patch(
+        "bellona.services.agent_service._synthesize_answer",
+        new=AsyncMock(return_value="Here are your results."),
+    ):
+        response = await client.post(
+            "/ui/query",
+            data={"question": "Show me all companies"},
+        )
+
     assert response.status_code == 200
     assert "Query" in response.text
 
